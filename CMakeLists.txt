@@ -1,16 +1,20 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(laserscan_to_pointcloud)
 
+
+set(${PROJECT_NAME}_CATKIN_COMPONENTS 
+    roscpp
+    sensor_msgs
+    tf2
+    rosconsole
+)
+
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-  # boost
-  eigen
-  roscpp
-  sensor_msgs
-  tf
-)
+find_package(catkin REQUIRED COMPONENTS ${${PROJECT_NAME}_CATKIN_COMPONENTS})
+find_package(Eigen REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -82,10 +86,10 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES laserscan_to_pointcloud
-#  CATKIN_DEPENDS boost eigen roscpp sensor_msgs tf
-#  DEPENDS system_lib
+    INCLUDE_DIRS include
+#   LIBRARIES laserscan_to_pointcloud
+    CATKIN_DEPENDS ${${PROJECT_NAME}_CATKIN_COMPONENTS}
+    DEPENDS Eigen
 )
 
 ###########
@@ -96,7 +100,9 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
-  ${catkin_INCLUDE_DIRS}
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${Eigen_INCLUDE_DIRS}
 )
 
 ## Declare a cpp library
@@ -105,16 +111,19 @@ include_directories(
 # )
 
 ## Declare a cpp executable
-# add_executable(laserscan_to_pointcloud_node src/laserscan_to_pointcloud_node.cpp)
+add_executable(laserscan_to_pointcloud_node
+    src/laserscan_to_pointcloud_node.cpp
+    src/laserscan_to_pointcloud.cpp
+    src/tf_collector.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(laserscan_to_pointcloud_node laserscan_to_pointcloud_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(laserscan_to_pointcloud_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(laserscan_to_pointcloud_node
+   ${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##
