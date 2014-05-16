@@ -22,7 +22,9 @@
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/PointField.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <tf2/LinearMath/Vector3.h>
+#include <tf2/LinearMath/Transform.h>
 
 // external includes
 #include <Eigen/Core>
@@ -52,14 +54,14 @@ class LaserScanToPointcloud {
 
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		LaserScanToPointcloud(std::string target_frame, size_t number_of_scans_to_assemble);
+		LaserScanToPointcloud(std::string target_frame);
 		virtual ~LaserScanToPointcloud();
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		void initNewPointCloud(size_t number_of_reserved_points);
-		sensor_msgs::PointCloud2Ptr& retrievePointCloud();		
+		void initNewPointCloud(size_t number_of_reserved_points = 684);
+		sensor_msgs::PointCloud2Ptr& retrievePointCloud();
 		bool updatePolarToCartesianProjectionMatrix(const sensor_msgs::LaserScanConstPtr& laser_scan);
 		bool integrateLaserScanWithShpericalLinearInterpolation(const sensor_msgs::LaserScanConstPtr& laser_scan);
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -81,7 +83,6 @@ class LaserScanToPointcloud {
 	private:
 		// configuration fields
 		std::string target_frame_;
-		size_t number_of_scans_to_assemble_;
 		double min_range_cutoff_percentage_;
 		double max_range_cutoff_percentage_;
 
@@ -89,13 +90,14 @@ class LaserScanToPointcloud {
 		sensor_msgs::PointCloud2Ptr pointcloud_;
 		size_t number_of_pointclouds_created_;
 		size_t number_of_points_in_cloud_;
-		size_t number_of_scans_assembled_;
+		size_t number_of_scans_assembled_in_current_pointcloud_;
 		Eigen::Array2Xf polar_to_cartesian_matrix_; ///> matrix with sin(theta) and cos(theta) for each laser scan ray
 		float polar_to_cartesian_matrix_angle_min_;
 		float polar_to_cartesian_matrix_angle_max_;
 		float polar_to_cartesian_matrix_angle_increment_;
 
 		// communication fields
+		TFCollector tf_collector_;
 
 	// ========================================================================   <private-section>   ==========================================================================
 };

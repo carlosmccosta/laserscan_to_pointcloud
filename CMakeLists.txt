@@ -5,6 +5,7 @@ project(laserscan_to_pointcloud)
 set(${PROJECT_NAME}_CATKIN_COMPONENTS 
     roscpp
     sensor_msgs
+    geometry_msgs
     tf2
     rosconsole
 )

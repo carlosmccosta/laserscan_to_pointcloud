@@ -17,13 +17,12 @@
 
 // =============================================================================  <public-section>   ===========================================================================
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-LaserScanToPointcloud::LaserScanToPointcloud(std::string target_frame, size_t number_of_scans_to_assemble) :
+LaserScanToPointcloud::LaserScanToPointcloud(std::string target_frame) :
 		target_frame_(target_frame),
-		number_of_scans_to_assemble_(number_of_scans_to_assemble),
 		min_range_cutoff_percentage_(1.05), max_range_cutoff_percentage_(0.95),
 		number_of_pointclouds_created_(0),
 		number_of_points_in_cloud_(0),
-		number_of_scans_assembled_(0),
+		number_of_scans_assembled_in_current_pointcloud_(0),
 		polar_to_cartesian_matrix_angle_min_(0), polar_to_cartesian_matrix_angle_max_(0), polar_to_cartesian_matrix_angle_increment_(0) {
 
 	polar_to_cartesian_matrix_.resize(Eigen::NoChange, 0);
@@ -37,6 +36,7 @@ LaserScanToPointcloud::~LaserScanToPointcloud() {}
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void LaserScanToPointcloud::initNewPointCloud(size_t number_of_reserved_points) {
 	pointcloud_ = sensor_msgs::PointCloud2Ptr(new sensor_msgs::PointCloud2());
+	number_of_scans_assembled_in_current_pointcloud_ = 0;
 
 	pointcloud_->header.seq = number_of_pointclouds_created_++;
 	pointcloud_->header.stamp = ros::Time::now();
@@ -84,9 +84,9 @@ bool LaserScanToPointcloud::updatePolarToCartesianProjectionMatrix(const sensor_
 		polar_to_cartesian_matrix_angle_increment_ = laser_scan->angle_increment;
 
 		double current_angle = laser_scan->angle_min;
-		for (size_t pointPos = 0; pointPos < number_of_scan_points; ++pointPos) {
-			polar_to_cartesian_matrix_(0, pointPos) = std::cos(current_angle);
-			polar_to_cartesian_matrix_(1, pointPos) = std::sin(current_angle);
+		for (size_t point_pos = 0; point_pos < number_of_scan_points; ++point_pos) {
+			polar_to_cartesian_matrix_(0, point_pos) = std::cos(current_angle);
+			polar_to_cartesian_matrix_(1, point_pos) = std::sin(current_angle);
 			current_angle += laser_scan->angle_increment;
 		}
 
@@ -98,25 +98,58 @@ bool LaserScanToPointcloud::updatePolarToCartesianProjectionMatrix(const sensor_
 
 
 bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(const sensor_msgs::LaserScanConstPtr& laser_scan) {
-	ros::Duration scan_duration((float)(laser_scan->ranges.size() - 1) * laser_scan->time_increment);
+	size_t number_of_scan_points = laser_scan->ranges.size();
+	size_t number_of_scan_steps = number_of_scan_points - 1;
+	ros::Duration scan_duration(number_of_scan_steps * laser_scan->time_increment);
 	ros::Time scan_start_time = laser_scan->header.stamp;
 	ros::Time scan_end_time = scan_start_time + scan_duration;
+
+	std::vector<tf2::Transform> collected_tfs;
+	tf_collector_.collectTFs(laser_scan->header.frame_id, pointcloud_->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs);
+
+	if (collected_tfs.empty()) {
+		return false;
+	}
+
+	tf2::Transform point_transform;
 
 	updatePolarToCartesianProjectionMatrix(laser_scan);
 
 	double min_range_cutoff = laser_scan->range_min * min_range_cutoff_percentage_;
 	double max_range_cutoff = laser_scan->range_max * max_range_cutoff_percentage_;
+	tf2Scalar one_scan_step_percentage = 1.0 / number_of_scan_steps;
+	tf2Scalar current_scan_percentage = 0;
 
-	size_t number_of_scan_points = laser_scan->ranges.size();
-	for (size_t pointPos = 0; pointPos < number_of_scan_points; ++pointPos) {
-		float point_range_value = laser_scan->ranges[pointPos];
-		if (point_range_value > min_range_cutoff && point_range_value < max_range_cutoff) {
-			tf2::Vector3 projectedPoint(point_range_value * polar_to_cartesian_matrix_(0, pointPos), point_range_value * polar_to_cartesian_matrix_(1, pointPos), 0);
-			++number_of_points_in_cloud_;
-		}
+	if (collected_tfs.size() == 1) {
+		point_transform = collected_tfs[0];
 	}
 
-	return false;
+
+	pointcloud_->data.resize(number_of_points_in_cloud_ + laser_scan->ranges.size()); // resize to fit at most all points in laser
+	float* pointcloud_data_position = (float*)(&pointcloud_->data[number_of_points_in_cloud_ * pointcloud_->point_step]);
+	for (size_t point_pos = 0; point_pos < number_of_scan_points; ++point_pos) {
+		float point_range_value = laser_scan->ranges[point_pos];
+		if (point_range_value > min_range_cutoff && point_range_value < max_range_cutoff) {
+			tf2::Vector3 projected_point(point_range_value * polar_to_cartesian_matrix_(0, point_pos), point_range_value * polar_to_cartesian_matrix_(1, point_pos), 0);
+
+			// interpolate position and rotation
+			if (collected_tfs.size() == 2) {
+				point_transform.getOrigin().setInterpolate3(collected_tfs[0].getOrigin(), collected_tfs[1].getOrigin(), current_scan_percentage);
+				point_transform.setRotation(tf2::slerp(collected_tfs[0].getRotation(), collected_tfs[1].getRotation(), current_scan_percentage));
+			}
+
+			tf2::Vector3 transformed_point = point_transform * projected_point;
+			*pointcloud_data_position++ = (float)transformed_point.getX();
+			*pointcloud_data_position++ = (float)transformed_point.getY();
+			*pointcloud_data_position++ = (float)transformed_point.getZ();
+
+			++number_of_points_in_cloud_;
+		}
+		current_scan_percentage += one_scan_step_percentage;
+	}
+	pointcloud_->data.resize(number_of_points_in_cloud_); // resize to shrink the vector size to the real number of points inserted
+
+	return true;
 }
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

@@ -13,12 +13,14 @@
 	<build_depend>eigen</build_depend>
 	<build_depend>roscpp</build_depend>	
 	<build_depend>sensor_msgs</build_depend>
+	<build_depend>geometry_msgs</build_depend>
 	<build_depend>tf2</build_depend>
 	<build_depend>rosconsole</build_depend>
-	
+		
 	<run_depend>eigen</run_depend>
 	<run_depend>roscpp</run_depend>
 	<run_depend>sensor_msgs</run_depend>
+	<run_depend>geometry_msgs</run_depend>
 	<run_depend>tf2</run_depend>
 	<run_depend>rosconsole</run_depend>
 
