@@ -8,6 +8,7 @@ set(${PROJECT_NAME}_CATKIN_COMPONENTS
     geometry_msgs
     tf2
     rosconsole
+    dynamic_reconfigure
 )
 
 
@@ -77,6 +78,12 @@ find_package(Eigen REQUIRED)
 #   sensor_msgs
 # )
 
+
+generate_dynamic_reconfigure_options(
+    cfg/LaserScanToPointcloudAssembler.cfg
+)
+
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -112,17 +119,20 @@ include_directories(
 # )
 
 ## Declare a cpp executable
-add_executable(laserscan_to_pointcloud_node
-    src/laserscan_to_pointcloud_node.cpp
+add_executable(laserscan_to_pointcloud_assembler
+    src/tf_collector.cpp
     src/laserscan_to_pointcloud.cpp
-    src/tf_collector.cpp)
+    src/laserscan_to_pointcloud_assembler.cpp
+    src/laserscan_to_pointcloud_assembler_node.cpp
+)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(laserscan_to_pointcloud_node laserscan_to_pointcloud_generate_messages_cpp)
+# add_dependencies(laserscan_to_pointcloud_assembler laserscan_to_pointcloud_generate_messages_cpp)
+add_dependencies(laserscan_to_pointcloud_assembler ${PROJECT_NAME}_gencfg)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(laserscan_to_pointcloud_node
+target_link_libraries(laserscan_to_pointcloud_assembler
    ${catkin_LIBRARIES}
 )
 
@@ -141,7 +151,7 @@ target_link_libraries(laserscan_to_pointcloud_node
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS laserscan_to_pointcloud laserscan_to_pointcloud_node
+# install(TARGETS laserscan_to_pointcloud laserscan_to_pointcloud_assembler
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

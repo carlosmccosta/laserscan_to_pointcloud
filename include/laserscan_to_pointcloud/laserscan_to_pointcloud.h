@@ -35,7 +35,7 @@
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  <includes> <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
-
+namespace laserscan_to_pointcloud {
 // ########################################################################   LaserScanToPointcloud   ##########################################################################
 /**
  * \brief PointCloud2 builder from LaserScans
@@ -54,9 +54,8 @@ class LaserScanToPointcloud {
 
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		LaserScanToPointcloud(std::string target_frame);
+		LaserScanToPointcloud(std::string target_frame = "", double min_range_cutoff_percentage = 1.05, double max_range_cutoff_percentage = 0.95);
 		virtual ~LaserScanToPointcloud();
-
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -67,10 +66,20 @@ class LaserScanToPointcloud {
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <gets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+		inline double getMaxRangeCutoffPercentageOffset() const { return max_range_cutoff_percentage_offset_;}
+		inline double getMinRangeCutoffPercentageOffset() const { return min_range_cutoff_percentage_offset_; }
+		inline size_t getNumberOfPointcloudsCreated() const { return number_of_pointclouds_created_; }
+		inline size_t getNumberOfPointsInCloud() const { return number_of_points_in_cloud_; }
+		inline size_t getNumberOfScansAssembledInCurrentPointcloud() const { return number_of_scans_assembled_in_current_pointcloud_; }
+		inline const sensor_msgs::PointCloud2Ptr& getPointcloud() const { return pointcloud_; }
+		inline sensor_msgs::PointCloud2Ptr& getPointcloud() { return pointcloud_; }
+		inline const std::string& getTargetFrame() const { return target_frame_; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </gets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+		inline void setMaxRangeCutoffPercentageOffset(double max_range_cutoff_percentage_offset) { max_range_cutoff_percentage_offset_ = max_range_cutoff_percentage_offset; }
+		inline void setMinRangeCutoffPercentageOffset(double min_range_cutoff_percentage_offset) { min_range_cutoff_percentage_offset_ = min_range_cutoff_percentage_offset; }
+		inline void setTargetFrame(const std::string& target_frame) { target_frame_ = target_frame; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	// ========================================================================   </public-section>   ==========================================================================
 
@@ -83,8 +92,8 @@ class LaserScanToPointcloud {
 	private:
 		// configuration fields
 		std::string target_frame_;
-		double min_range_cutoff_percentage_;
-		double max_range_cutoff_percentage_;
+		double min_range_cutoff_percentage_offset_;
+		double max_range_cutoff_percentage_offset_;
 
 		// state fields
 		sensor_msgs::PointCloud2Ptr pointcloud_;
@@ -98,7 +107,6 @@ class LaserScanToPointcloud {
 
 		// communication fields
 		TFCollector tf_collector_;
-
 	// ========================================================================   <private-section>   ==========================================================================
 };
-
+} /* namespace laserscan_to_pointcloud */
