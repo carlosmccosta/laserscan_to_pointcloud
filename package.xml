@@ -5,25 +5,23 @@
 	<description>ROS package to convert and assemble LaserScan to PointCloud2</description>
 	<maintainer email="carloscosta.cmcc@gmail.com">Carlos Miguel Correia da Costa</maintainer>
 	<license>BSD</license>
-
 	<author email="carloscosta.cmcc@gmail.com">Carlos Miguel Correia da Costa</author>
 
 	<buildtool_depend>catkin</buildtool_depend>
-	
 	<build_depend>eigen</build_depend>
 	<build_depend>roscpp</build_depend>	
 	<build_depend>sensor_msgs</build_depend>
 	<build_depend>geometry_msgs</build_depend>
 	<build_depend>tf2</build_depend>
+	<build_depend>tf2_ros</build_depend>
 	<build_depend>rosconsole</build_depend>
 	<build_depend>dynamic_reconfigure</build_depend>
-		
 	<run_depend>eigen</run_depend>
 	<run_depend>roscpp</run_depend>
 	<run_depend>sensor_msgs</run_depend>
 	<run_depend>geometry_msgs</run_depend>
 	<run_depend>tf2</run_depend>
+	<run_depend>tf2_ros</run_depend>
 	<run_depend>rosconsole</run_depend>
 	<run_depend>dynamic_reconfigure</run_depend>
-
 </package>

@@ -5,24 +5,26 @@
  * @author Carlos Miguel Correia da Costa
  */
 
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  <includes> <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <includes>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 #include "laserscan_to_pointcloud/laserscan_to_pointcloud_assembler.h"
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  </includes> <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </includes>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  <imports> <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  </imports> <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <imports>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </imports>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 namespace laserscan_to_pointcloud {
 // =============================================================================  <public-section>   ===========================================================================
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePtr& node_handle, ros::NodeHandlePtr& private_node_handle) :
-			node_handle_(node_handle), private_node_handle_(private_node_handle) {
+		number_droped_laserscans_(0), node_handle_(node_handle), private_node_handle_(private_node_handle) {
 
+	private_node_handle_->param("laser_scan_topic", laser_scan_topic_, std::string("tilt_scan"));
+	private_node_handle_->param("number_of_scans_to_assemble_per_cloud", number_of_scans_to_assemble_per_cloud_, 10);
 	private_node_handle_->param("target_frame", target_frame_, std::string("map"));
-	private_node_handle_->param("laser_scan_topic", laser_scan_topic_, std::string("laser_scan"));
 	private_node_handle_->param("min_range_cutoff_percentage_offset", min_range_cutoff_percentage_offset_, 1.05);
 	private_node_handle_->param("max_range_cutoff_percentage_offset", max_range_cutoff_percentage_offset_, 0.95);
-	private_node_handle_->param("number_of_scans_to_assemble_per_cloud", number_of_scans_to_assemble_per_cloud_, 10);
+	private_node_handle_->param("include_laser_intensity", include_laser_intensity_, false);
+
 
 	propagatePointCloudAssemblerConfigs();
 
@@ -56,38 +58,53 @@ void LaserScanToPointcloudAssembler::stopAssemblingLaserScans() {
 
 void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan) {
 	int number_of_scans_in_current_pointcloud = (int)laserscan_to_pointcloud_.getNumberOfScansAssembledInCurrentPointcloud();
-
 	if ((number_of_scans_in_current_pointcloud == 0 && laserscan_to_pointcloud_.getNumberOfPointcloudsCreated() == 0) ||
-			number_of_scans_in_current_pointcloud == number_of_scans_to_assemble_per_cloud_) {
-		laserscan_to_pointcloud_.initNewPointCloud(laser_scan->ranges.size() * number_of_scans_to_assemble_per_cloud_);
+			number_of_scans_in_current_pointcloud >= number_of_scans_to_assemble_per_cloud_) {
+		laserscan_to_pointcloud_.initNewPointCloud(laser_scan->ranges.size() * number_of_scans_to_assemble_per_cloud_, include_laser_intensity_);
 	}
 
-	laserscan_to_pointcloud_.integrateLaserScanWithShpericalLinearInterpolation(laser_scan);
-	if (number_of_scans_in_current_pointcloud == number_of_scans_to_assemble_per_cloud_) {
+	if (!laserscan_to_pointcloud_.integrateLaserScanWithShpericalLinearInterpolation(laser_scan)) {
+		ROS_DEBUG_STREAM("Dropped " << ++number_droped_laserscans_ << " LaserScans because of missing TFs between [" << laser_scan->header.frame_id << "] and [" << target_frame_ << "]");
+	}
+
+	number_of_scans_in_current_pointcloud = (int)laserscan_to_pointcloud_.getNumberOfScansAssembledInCurrentPointcloud();
+	if (number_of_scans_in_current_pointcloud >= number_of_scans_to_assemble_per_cloud_ && laserscan_to_pointcloud_.getNumberOfPointsInCloud() > 0) {
+		laserscan_to_pointcloud_.getPointcloud()->header.stamp = ros::Time::now();
 		pointcloud_publisher_.publish(laserscan_to_pointcloud_.getPointcloud());
 
-		ROS_INFO_STREAM("Publishing cloud with " << laserscan_to_pointcloud_.getPointcloud()->width << " points assembled from " << number_of_scans_in_current_pointcloud << " LaserScan");
+		ROS_INFO_STREAM("Publishing cloud with " << laserscan_to_pointcloud_.getPointcloud()->width << " points assembled from " << number_of_scans_in_current_pointcloud << " LaserScans");
 	}
 }
 
 
 void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_pointcloud::LaserScanToPointcloudAssemblerConfig& config, uint32_t level) {
-	target_frame_ = config.target_frame;
-	laser_scan_topic_ = config.laser_scan_topic;
-	min_range_cutoff_percentage_offset_ = config.min_range_cutoff_percentage_offset;
-	max_range_cutoff_percentage_offset_ = config.max_range_cutoff_percentage_offset;
-	number_of_scans_to_assemble_per_cloud_ = config.number_of_scans_to_assemble_per_cloud;
+	if (level == 1) {
+		ROS_INFO_STREAM("LaserScanToPointcloudAssembler dynamic reconfigure (level=" << level << ") -> " \
+				<< "\n\t[laser_scan_topic]: " 						<< laser_scan_topic_ 						<< " -> " << config.laser_scan_topic \
+				<< "\n\t[number_of_scans_to_assemble_per_cloud]: "	<< number_of_scans_to_assemble_per_cloud_ 	<< " -> " << config.number_of_scans_to_assemble_per_cloud
+				<< "\n\t[target_frame]: " 							<< target_frame_ 							<< " -> " << config.target_frame \
+				<< "\n\t[min_range_cutoff_percentage_offset]: " 	<< min_range_cutoff_percentage_offset_ 		<< " -> " << config.min_range_cutoff_percentage_offset \
+				<< "\n\t[max_range_cutoff_percentage_offset]: " 	<< max_range_cutoff_percentage_offset_ 		<< " -> " << config.max_range_cutoff_percentage_offset \
+				<< "\n\t[include_laser_intensity]: " 				<< include_laser_intensity_					<< " -> " << (config.include_laser_intensity ? "True" : "False"));
 
-	propagatePointCloudAssemblerConfigs();
+		laser_scan_topic_ = config.laser_scan_topic;
+		number_of_scans_to_assemble_per_cloud_ = config.number_of_scans_to_assemble_per_cloud;
+		target_frame_ = config.target_frame;
+		min_range_cutoff_percentage_offset_ = config.min_range_cutoff_percentage_offset;
+		max_range_cutoff_percentage_offset_ = config.max_range_cutoff_percentage_offset;
+		include_laser_intensity_ = config.include_laser_intensity;
+
+		propagatePointCloudAssemblerConfigs();
+	}
 }
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToPointcloudAssembler-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 // =============================================================================  </public-section>   ==========================================================================
 
 // =============================================================================   <protected-section>   =======================================================================
-// =============================================================================   </protected-section>   ======================================================================
+// =============================================================================   </protected-section>  =======================================================================
 
 // =============================================================================   <private-section>   =========================================================================
-// =============================================================================   </private-section>   ========================================================================
+// =============================================================================   </private-section>  =========================================================================
 
 
 
