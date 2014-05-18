@@ -75,6 +75,7 @@ class LaserScanToPointcloudAssembler {
 		// assembler config fields
 		std::string laser_scan_topic_;
 		int number_of_scans_to_assemble_per_cloud_;
+		ros::Duration timeout_for_cloud_assembly_;
 
 		// laserscan_to_pointcloud_ config fields
 		LaserScanToPointcloud laserscan_to_pointcloud_;
@@ -83,7 +84,9 @@ class LaserScanToPointcloudAssembler {
 		double max_range_cutoff_percentage_offset_;
 		bool include_laser_intensity_;
 
+		// state fieds
 		size_t number_droped_laserscans_;
+		bool timeout_for_cloud_assembly_reached_;
 
 		// communication fields
 		ros::NodeHandlePtr node_handle_;
