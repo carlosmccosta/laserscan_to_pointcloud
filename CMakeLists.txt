@@ -55,6 +55,7 @@ include_directories(
 add_executable(laserscan_to_pointcloud_assembler
     src/tf_collector.cpp
     src/laserscan_to_pointcloud.cpp
+    src/laserscan_to_ros_pointcloud.cpp
     src/laserscan_to_pointcloud_assembler.cpp
     src/laserscan_to_pointcloud_assembler_node.cpp
 )

@@ -20,8 +20,6 @@
 // ROS includes
 #include <ros/console.h>
 #include <sensor_msgs/LaserScan.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/PointField.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <tf2/LinearMath/Vector3.h>
 #include <tf2/LinearMath/Transform.h>
@@ -57,9 +55,14 @@ class LaserScanToPointcloud {
 		virtual ~LaserScanToPointcloud();
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </constructors-destructor>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
+		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloud-virtual-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+		virtual void initNewPointCloud(size_t number_of_reserved_points = 684, bool include_laser_intensity = false) = 0;
+		virtual void addMeasureToPointCloud(float x, float y, float z, float intensity) = 0;
+		virtual void setupPointCloudForNewLaserScan(size_t number_laser_scan_points) = 0;
+		virtual void finishLaserScanIntegration() = 0;
+		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToPointcloud-virtual-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		void initNewPointCloud(size_t number_of_reserved_points = 684, bool include_laser_intensity = false);
-		sensor_msgs::PointCloud2Ptr& retrievePointCloud();
 		bool updatePolarToCartesianProjectionMatrix(const sensor_msgs::LaserScanConstPtr& laser_scan);
 		bool integrateLaserScanWithShpericalLinearInterpolation(const sensor_msgs::LaserScanConstPtr& laser_scan);
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToPointcloud-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -68,20 +71,19 @@ class LaserScanToPointcloud {
 		inline const std::string& getTargetFrame() const { return target_frame_; }
 		inline double getMaxRangeCutoffPercentageOffset() const { return max_range_cutoff_percentage_offset_;}
 		inline double getMinRangeCutoffPercentageOffset() const { return min_range_cutoff_percentage_offset_; }
-		inline bool isIncludeLaserIntensity() const { return include_laser_intensity_; }
+
 		inline size_t getNumberOfPointcloudsCreated() const { return number_of_pointclouds_created_; }
 		inline size_t getNumberOfPointsInCloud() const { return number_of_points_in_cloud_; }
 		inline size_t getNumberOfScansAssembledInCurrentPointcloud() const { return number_of_scans_assembled_in_current_pointcloud_; }
-		inline const sensor_msgs::PointCloud2Ptr& getPointcloud() const { return pointcloud_; }
-		inline sensor_msgs::PointCloud2Ptr& getPointcloud() { return pointcloud_; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </gets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		inline void setTargetFrame(const std::string& target_frame) { target_frame_ = target_frame; }
 		inline void setMaxRangeCutoffPercentageOffset(double max_range_cutoff_percentage_offset) { max_range_cutoff_percentage_offset_ = max_range_cutoff_percentage_offset; }
 		inline void setMinRangeCutoffPercentageOffset(double min_range_cutoff_percentage_offset) { min_range_cutoff_percentage_offset_ = min_range_cutoff_percentage_offset; }
-		inline void setIncludeLaserIntensity(bool include_laser_intensity) { include_laser_intensity_ = include_laser_intensity; }
-
+		inline void incrementNumberOfPointCloudsCreated() { ++number_of_pointclouds_created_; }
+		inline void resetNumberOfPointsInCloud() { number_of_points_in_cloud_ = 0; }
+		inline void resetNumberOfScansAsembledInCurrentCloud() { number_of_scans_assembled_in_current_pointcloud_ = 0; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </sets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	// ========================================================================   </public-section>   ==========================================================================
 
@@ -96,10 +98,8 @@ class LaserScanToPointcloud {
 		std::string target_frame_;
 		double min_range_cutoff_percentage_offset_;
 		double max_range_cutoff_percentage_offset_;
-		bool include_laser_intensity_;
 
 		// state fields
-		sensor_msgs::PointCloud2Ptr pointcloud_;
 		size_t number_of_pointclouds_created_;
 		size_t number_of_points_in_cloud_;
 		size_t number_of_scans_assembled_in_current_pointcloud_;

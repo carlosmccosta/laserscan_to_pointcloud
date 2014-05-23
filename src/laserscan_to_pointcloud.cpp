@@ -20,7 +20,6 @@ namespace laserscan_to_pointcloud {
 LaserScanToPointcloud::LaserScanToPointcloud(std::string target_frame, double min_range_cutoff_percentage, double max_range_cutoff_percentage) :
 		target_frame_(target_frame),
 		min_range_cutoff_percentage_offset_(min_range_cutoff_percentage), max_range_cutoff_percentage_offset_(max_range_cutoff_percentage),
-		include_laser_intensity_(false),
 		number_of_pointclouds_created_(0),
 		number_of_points_in_cloud_(0),
 		number_of_scans_assembled_in_current_pointcloud_(0),
@@ -35,47 +34,6 @@ LaserScanToPointcloud::~LaserScanToPointcloud() {}
 
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-void LaserScanToPointcloud::initNewPointCloud(size_t number_of_reserved_points, bool include_laser_intensity) {
-	include_laser_intensity_ = include_laser_intensity;
-	pointcloud_ = sensor_msgs::PointCloud2Ptr(new sensor_msgs::PointCloud2());
-	number_of_points_in_cloud_ = 0;
-	number_of_scans_assembled_in_current_pointcloud_ = 0;
-
-	pointcloud_->header.seq = number_of_pointclouds_created_++;
-	pointcloud_->header.stamp = ros::Time::now();
-	pointcloud_->header.frame_id = target_frame_;
-	pointcloud_->height = 1;
-	pointcloud_->width = 0;
-	pointcloud_->fields.clear();
-	pointcloud_->fields.resize(include_laser_intensity_ ? 4 : 3);
-	pointcloud_->fields[0].name = "x";
-	pointcloud_->fields[0].offset = 0;
-	pointcloud_->fields[0].datatype = sensor_msgs::PointField::FLOAT32;
-	pointcloud_->fields[0].count = 1;
-	pointcloud_->fields[1].name = "y";
-	pointcloud_->fields[1].offset = 4;
-	pointcloud_->fields[1].datatype = sensor_msgs::PointField::FLOAT32;
-	pointcloud_->fields[1].count = 1;
-	pointcloud_->fields[2].name = "z";
-	pointcloud_->fields[2].offset = 8;
-	pointcloud_->fields[2].datatype = sensor_msgs::PointField::FLOAT32;
-	pointcloud_->fields[2].count = 1;
-	pointcloud_->point_step = 12;
-
-	if (include_laser_intensity_) {
-		pointcloud_->fields[3].name = "intensity";
-		pointcloud_->fields[3].offset = 12;
-		pointcloud_->fields[3].datatype = sensor_msgs::PointField::FLOAT32;
-		pointcloud_->fields[3].count = 1;
-		pointcloud_->point_step += 4;
-	}
-
-	pointcloud_->row_step = 0;
-	pointcloud_->data.reserve(number_of_reserved_points * pointcloud_->point_step);
-	pointcloud_->is_dense = true;
-}
-
-
 bool LaserScanToPointcloud::updatePolarToCartesianProjectionMatrix(const sensor_msgs::LaserScanConstPtr& laser_scan) {
 	size_t number_of_scan_points = laser_scan->ranges.size();
 	if (polar_to_cartesian_matrix_.cols() != number_of_scan_points
@@ -119,7 +77,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 
 	// tfs setup
 	std::vector<tf2::Transform> collected_tfs;
-	tf_collector_.collectTFs(pointcloud_->header.frame_id, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs);
+	tf_collector_.collectTFs(target_frame_, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs);
 	if (collected_tfs.empty()) { return false; }
 	updatePolarToCartesianProjectionMatrix(laser_scan);
 
@@ -133,8 +91,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 
 
 	// laser scan projection and transformation
-	pointcloud_->data.resize((number_of_points_in_cloud_ + laser_scan->ranges.size()) * pointcloud_->point_step); // resize to fit all points in the LaserScan
-	float* pointcloud_data_position = (float*)(&pointcloud_->data[number_of_points_in_cloud_ * pointcloud_->point_step]);
+	setupPointCloudForNewLaserScan(laser_scan->ranges.size());  // virtual
 	for (size_t point_pos = 0; point_pos < number_of_scan_points; ++point_pos) {
 		float point_range_value = laser_scan->ranges[point_pos];
 		if (point_range_value > min_range_cutoff && point_range_value < max_range_cutoff) {
@@ -151,25 +108,18 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 			tf2::Vector3 transformed_point = point_transform * projected_point;
 
 			// copy point to pointcloud
-			*pointcloud_data_position++ = (float)transformed_point.getX();
-			*pointcloud_data_position++ = (float)transformed_point.getY();
-			*pointcloud_data_position++ = (float)transformed_point.getZ();
-			if (include_laser_intensity_) {
-				if (point_pos < laser_scan->intensities.size()) {
-					*pointcloud_data_position++ = (float)laser_scan->intensities[point_pos];
-				} else {
-					*pointcloud_data_position++ = 0;
-				}
+			float intensity = 0;
+			if (point_pos < laser_scan->intensities.size()) {
+				intensity = (float)laser_scan->intensities[point_pos];
 			}
+			addMeasureToPointCloud((float)transformed_point.getX(), (float)transformed_point.getY(), (float)transformed_point.getZ(), intensity);  // virtual
 
 			++number_of_points_in_cloud_;
 		}
 		current_scan_percentage += one_scan_step_percentage;
 	}
-	pointcloud_->width = number_of_points_in_cloud_;
-	pointcloud_->row_step = pointcloud_->width * pointcloud_->point_step;
-	pointcloud_->data.resize(pointcloud_->height * pointcloud_->row_step); // resize to shrink the vector size to the real number of points inserted
 
+	finishLaserScanIntegration(); // virtual
 	++number_of_scans_assembled_in_current_pointcloud_;
 	return true;
 }

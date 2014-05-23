@@ -1,6 +1,6 @@
 #pragma once
 
-/**\file laser_scan_to_pointcloud_assembler.h
+/**\file laserscan_to_ros_pointcloud.h
  * \brief Description...
  *
  * @version 1.0
@@ -10,29 +10,25 @@
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <macros>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </macros>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <includes>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  <includes>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 // std includes
 
 // ROS includes
-#include <ros/ros.h>
-#include <ros/console.h>
-#include <sensor_msgs/LaserScan.h>
-#include <dynamic_reconfigure/server.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/PointField.h>
 
 // external libs includes
 
 // project includes
-#include "laserscan_to_pointcloud/laserscan_to_ros_pointcloud.h"
-#include "laserscan_to_pointcloud/LaserScanToPointcloudAssemblerConfig.h"
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </includes>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
+#include "laserscan_to_pointcloud/laserscan_to_pointcloud.h"
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </includes>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 namespace laserscan_to_pointcloud {
-// ###################################################################   laser_scan_to_pointcloud_assembler   ##################################################################
+// ######################################################################   laserscan_to_ros_pointcloud   ######################################################################
 /**
  * \brief Description...
  */
-class LaserScanToPointcloudAssembler {
+class LaserScanToROSPointcloud : public LaserScanToPointcloud {
 	// ========================================================================   <public-section>   ===========================================================================
 	public:
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <typedefs>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -45,26 +41,30 @@ class LaserScanToPointcloudAssembler {
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </constants>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		LaserScanToPointcloudAssembler(ros::NodeHandlePtr& node_handle, ros::NodeHandlePtr& private_node_handle);
-		virtual ~LaserScanToPointcloudAssembler();
-
-		void propagatePointCloudAssemblerConfigs();
-		void startAssemblingLaserScans();
-		void stopAssemblingLaserScans();
-		void processLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan);
-
-		void dynamicReconfigureCallback(laserscan_to_pointcloud::LaserScanToPointcloudAssemblerConfig& config, uint32_t level);
+		LaserScanToROSPointcloud(std::string target_frame = "", double min_range_cutoff_percentage = 1.05, double max_range_cutoff_percentage = 0.95);
+		virtual ~LaserScanToROSPointcloud();
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </constructors-destructor>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloudAssembler-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToPointcloudAssembler-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToROSPointcloud-virtual-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+		virtual void initNewPointCloud(size_t number_of_reserved_points = 684, bool include_laser_intensity = false) /*override*/;
+		virtual void addMeasureToPointCloud(float x, float y, float z, float intensity) /*override*/;
+		virtual void setupPointCloudForNewLaserScan(size_t number_laser_scan_points) /*override*/;
+		virtual void finishLaserScanIntegration()/*override*/;
+		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToROSPointcloud-virtual-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToROSPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToROSPointcloud-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <gets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+		inline const sensor_msgs::PointCloud2Ptr& getPointcloud() const { return pointcloud_; }
+		inline sensor_msgs::PointCloud2Ptr& getPointcloud() { return pointcloud_; }
+		inline bool isIncludeLaserIntensity() const { return include_laser_intensity_; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </gets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+		inline void setIncludeLaserIntensity(bool include_laser_intensity) { include_laser_intensity_ = include_laser_intensity; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </sets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-	// ========================================================================   </public-section>   ==========================================================================
+	// ========================================================================   </public-section>  ===========================================================================
 
 	// ========================================================================   <protected-section>   ========================================================================
 	protected:
@@ -72,29 +72,10 @@ class LaserScanToPointcloudAssembler {
 
 	// ========================================================================   <private-section>   ==========================================================================
 	private:
-		// assembler config fields
-		std::string laser_scan_topic_;
-		int number_of_scans_to_assemble_per_cloud_;
-		ros::Duration timeout_for_cloud_assembly_;
-
-		// laserscan_to_pointcloud_ config fields
-		LaserScanToROSPointcloud laserscan_to_pointcloud_;
-		std::string target_frame_;
-		double min_range_cutoff_percentage_offset_;
-		double max_range_cutoff_percentage_offset_;
+		sensor_msgs::PointCloud2Ptr pointcloud_;
 		bool include_laser_intensity_;
-
-		// state fieds
-		size_t number_droped_laserscans_;
-		bool timeout_for_cloud_assembly_reached_;
-
-		// communication fields
-		ros::NodeHandlePtr node_handle_;
-		ros::NodeHandlePtr private_node_handle_;
-		ros::Subscriber laserscan_subscriber_;
-		ros::Publisher pointcloud_publisher_;
-
-		dynamic_reconfigure::Server<laserscan_to_pointcloud::LaserScanToPointcloudAssemblerConfig> dynamic_reconfigure_server_;
+		float* pointcloud_data_position_;
 	// ========================================================================   </private-section>  ==========================================================================
 };
+
 } /* namespace laserscan_to_pointcloud */
