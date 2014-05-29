@@ -91,6 +91,7 @@ void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_poi
 	if (level == 1) {
 		ROS_INFO_STREAM("LaserScanToPointcloudAssembler dynamic reconfigure (level=" << level << ") -> " \
 				<< "\n\t[laser_scan_topic]: " 						<< laser_scan_topic_ 						<< " -> " << config.laser_scan_topic \
+				<< "\n\t[pointcloud_publish_topic]: " 				<< pointcloud_publish_topic_				<< " -> " << config.pointcloud_publish_topic \
 				<< "\n\t[number_of_scans_to_assemble_per_cloud]: "	<< number_of_scans_to_assemble_per_cloud_ 	<< " -> " << config.number_of_scans_to_assemble_per_cloud \
 				<< "\n\t[timeout_for_cloud_assembly]: "				<< timeout_for_cloud_assembly_.toSec() 		<< " -> " << config.timeout_for_cloud_assembly \
 				<< "\n\t[target_frame]: " 							<< target_frame_ 							<< " -> " << config.target_frame \
@@ -98,7 +99,18 @@ void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_poi
 				<< "\n\t[max_range_cutoff_percentage_offset]: " 	<< max_range_cutoff_percentage_offset_ 		<< " -> " << config.max_range_cutoff_percentage_offset \
 				<< "\n\t[include_laser_intensity]: " 				<< include_laser_intensity_					<< " -> " << (config.include_laser_intensity ? "True" : "False"));
 
-		laser_scan_topic_ = config.laser_scan_topic;
+		if (!config.laser_scan_topic.empty() && laser_scan_topic_ != config.laser_scan_topic) {
+			laser_scan_topic_ = config.laser_scan_topic;
+			laserscan_subscriber_.shutdown();
+			laserscan_subscriber_ = node_handle_->subscribe(laser_scan_topic_, 100, &laserscan_to_pointcloud::LaserScanToPointcloudAssembler::processLaserScan, this);
+		}
+
+		if (!config.pointcloud_publish_topic.empty() && pointcloud_publish_topic_ != config.pointcloud_publish_topic) {
+			pointcloud_publish_topic_ = config.pointcloud_publish_topic;
+			pointcloud_publisher_.shutdown();
+			pointcloud_publisher_ = node_handle_->advertise<sensor_msgs::PointCloud2>(pointcloud_publish_topic_, 10);
+		}
+
 		number_of_scans_to_assemble_per_cloud_ = config.number_of_scans_to_assemble_per_cloud;
 		timeout_for_cloud_assembly_.fromSec(config.timeout_for_cloud_assembly);
 		target_frame_ = config.target_frame;

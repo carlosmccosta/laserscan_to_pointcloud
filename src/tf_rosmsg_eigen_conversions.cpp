@@ -31,6 +31,19 @@ void transformTF2ToMsg(const tf2::Transform& tf2, geometry_msgs::Transform& msg)
 	msg.translation.z = tf2.getOrigin().z();
 }
 
+void transformMsgToTF2(const geometry_msgs::Pose& msg, tf2::Transform& tf2) {
+	transformMsgToTF2(msg.position, tf2.getOrigin());
+	tf2.setRotation(tf2::Quaternion(msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w));
+}
+
+void transformTF2ToMsg(const tf2::Transform& tf2, geometry_msgs::Pose& msg) {
+	transformTF2ToMsg(tf2.getOrigin(), msg.position);
+	tf2::Quaternion rotation = tf2.getRotation();
+	msg.orientation.x = rotation.getX();
+	msg.orientation.y = rotation.getY();
+	msg.orientation.z = rotation.getZ();
+}
+
 
 void transformMsgToTF2(const geometry_msgs::Quaternion& msg, tf2::Quaternion& tf2) {
 	tf2.setX(msg.x);
@@ -59,14 +72,28 @@ void transformTF2ToMsg(const tf2::Vector3& tf2, geometry_msgs::Vector3& msg) {
 	msg.z = tf2.getZ();
 }
 
+void transformMsgToTF2(const geometry_msgs::Point& msg, tf2::Vector3& tf2) {
+	tf2.setX(msg.x);
+	tf2.setY(msg.y);
+	tf2.setZ(msg.z);
+}
 
+void transformTF2ToMsg(const tf2::Vector3& tf2, geometry_msgs::Point& msg) {
+	msg.x = tf2.getX();
+	msg.y = tf2.getY();
+	msg.z = tf2.getZ();
+}
 
 void transformMatrixToTF2(const Eigen::Matrix4f& matrix, tf2::Transform& tf2) {
-//	Eigen::Matrix4d doubleMatrix(matrix.cast());
-//	tf2.setFromOpenGLMatrix(doubleMatrix.data());
+	Eigen::Matrix4d doubleMatrix(matrix.cast<double>());
+	tf2.setFromOpenGLMatrix(doubleMatrix.data());
+}
+
+void transformMatrixToMsg(const Eigen::Matrix4f& matrix, geometry_msgs::Pose& msg) {
+	tf2::Transform tf2;
+	transformMatrixToTF2(matrix, tf2);
+	transformTF2ToMsg(tf2, msg);
 }
 
 } /* namespace tf_rosmsg_eigen_conversions */
 } /* namespace laserscan_to_pointcloud */
-
-
