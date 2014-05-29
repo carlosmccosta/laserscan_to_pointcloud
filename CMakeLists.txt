@@ -31,7 +31,10 @@ generate_dynamic_reconfigure_options(
 
 catkin_package(
     INCLUDE_DIRS include
-#   LIBRARIES laserscan_to_pointcloud_assembler_nodelet
+    LIBRARIES
+        tf_rosmsg_eigen_conversions
+        tf_collector
+        laserscan_to_pointcloud
     CATKIN_DEPENDS ${${PROJECT_NAME}_CATKIN_COMPONENTS}
     DEPENDS Eigen
 )
@@ -44,17 +47,15 @@ catkin_package(
 
 include_directories(
     include
-    ${catkin_INCLUDE_DIRS}
     ${Eigen_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
 )
 
-# add_library(laserscan_to_pointcloud
-#   src/${PROJECT_NAME}/laserscan_to_pointcloud_assembler_nodelet.cpp
-# )
+add_library(tf_rosmsg_eigen_conversions src/tf_rosmsg_eigen_conversions.cpp)
+add_library(tf_collector src/tf_collector.cpp)
+add_library(laserscan_to_pointcloud src/laserscan_to_pointcloud.cpp)
 
 add_executable(laserscan_to_pointcloud_assembler
-    src/tf_collector.cpp
-    src/laserscan_to_pointcloud.cpp
     src/laserscan_to_ros_pointcloud.cpp
     src/laserscan_to_pointcloud_assembler.cpp
     src/laserscan_to_pointcloud_assembler_node.cpp
@@ -62,7 +63,9 @@ add_executable(laserscan_to_pointcloud_assembler
 
 add_dependencies(laserscan_to_pointcloud_assembler ${PROJECT_NAME}_gencfg)
 
-target_link_libraries(laserscan_to_pointcloud_assembler ${catkin_LIBRARIES})
+target_link_libraries(tf_collector tf_rosmsg_eigen_conversions ${catkin_LIBRARIES})
+target_link_libraries(laserscan_to_pointcloud tf_collector ${catkin_LIBRARIES})
+target_link_libraries(laserscan_to_pointcloud_assembler laserscan_to_pointcloud ${catkin_LIBRARIES})
 
 
 

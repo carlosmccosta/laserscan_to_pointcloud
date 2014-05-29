@@ -15,8 +15,8 @@
 
 // ROS includes
 #include <ros/ros.h>
-#include <ros/console.h>
 #include <sensor_msgs/LaserScan.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <dynamic_reconfigure/server.h>
 
 // external libs includes
@@ -74,6 +74,7 @@ class LaserScanToPointcloudAssembler {
 	private:
 		// assembler config fields
 		std::string laser_scan_topic_;
+		std::string pointcloud_publish_topic_;
 		int number_of_scans_to_assemble_per_cloud_;
 		ros::Duration timeout_for_cloud_assembly_;
 

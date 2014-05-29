@@ -21,6 +21,7 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 
 	double timeout_for_cloud_assembly = 5.0;
 	private_node_handle_->param("laser_scan_topic", laser_scan_topic_, std::string("tilt_scan"));
+	private_node_handle_->param("pointcloud_publish_topic", pointcloud_publish_topic_, std::string("assembled_pointcloud"));
 	private_node_handle_->param("number_of_scans_to_assemble_per_cloud", number_of_scans_to_assemble_per_cloud_, 10);
 	private_node_handle_->param("timeout_for_cloud_assembly", timeout_for_cloud_assembly, 5.0);
 	private_node_handle_->param("target_frame", target_frame_, std::string("map"));
@@ -42,6 +43,7 @@ LaserScanToPointcloudAssembler::~LaserScanToPointcloudAssembler() {	}
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloudAssembler-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void LaserScanToPointcloudAssembler::propagatePointCloudAssemblerConfigs() {
 	laserscan_to_pointcloud_.setTargetFrame(target_frame_);
+	laserscan_to_pointcloud_.setIncludeLaserIntensity(include_laser_intensity_);
 	laserscan_to_pointcloud_.setMinRangeCutoffPercentageOffset(min_range_cutoff_percentage_offset_);
 	laserscan_to_pointcloud_.setMaxRangeCutoffPercentageOffset(max_range_cutoff_percentage_offset_);
 }
@@ -49,7 +51,7 @@ void LaserScanToPointcloudAssembler::propagatePointCloudAssemblerConfigs() {
 
 void LaserScanToPointcloudAssembler::startAssemblingLaserScans() {
 	laserscan_subscriber_ = node_handle_->subscribe(laser_scan_topic_, 100, &laserscan_to_pointcloud::LaserScanToPointcloudAssembler::processLaserScan, this);
-	pointcloud_publisher_ = node_handle_->advertise<sensor_msgs::PointCloud2>("assembled_pointcloud", 10);
+	pointcloud_publisher_ = node_handle_->advertise<sensor_msgs::PointCloud2>(pointcloud_publish_topic_, 10);
 }
 
 
@@ -64,7 +66,8 @@ void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserSc
 	if ((number_of_scans_in_current_pointcloud == 0 && laserscan_to_pointcloud_.getNumberOfPointcloudsCreated() == 0)
 			|| number_of_scans_in_current_pointcloud >= number_of_scans_to_assemble_per_cloud_
 			|| timeout_for_cloud_assembly_reached_) {
-		laserscan_to_pointcloud_.initNewPointCloud(laser_scan->ranges.size() * number_of_scans_to_assemble_per_cloud_, include_laser_intensity_);
+		laserscan_to_pointcloud_.setIncludeLaserIntensity(include_laser_intensity_);
+		laserscan_to_pointcloud_.initNewPointCloud(laser_scan->ranges.size() * number_of_scans_to_assemble_per_cloud_);
 		timeout_for_cloud_assembly_reached_ = false;
 	}
 
@@ -78,7 +81,7 @@ void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserSc
 		laserscan_to_pointcloud_.getPointcloud()->header.stamp = ros::Time::now();
 		pointcloud_publisher_.publish(laserscan_to_pointcloud_.getPointcloud());
 
-		ROS_INFO_STREAM("Publishing cloud with " << laserscan_to_pointcloud_.getPointcloud()->width << " points assembled from " << number_of_scans_in_current_pointcloud << " LaserScans" \
+		ROS_DEBUG_STREAM("Publishing cloud with " << laserscan_to_pointcloud_.getPointcloud()->width << " points assembled from " << number_of_scans_in_current_pointcloud << " LaserScans" \
 				<< (timeout_for_cloud_assembly_reached_ ? " (timeout reached)" : ""));
 	}
 }

@@ -112,7 +112,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 			if (point_pos < laser_scan->intensities.size()) {
 				intensity = (float)laser_scan->intensities[point_pos];
 			}
-			addMeasureToPointCloud((float)transformed_point.getX(), (float)transformed_point.getY(), (float)transformed_point.getZ(), intensity);  // virtual
+			addMeasureToPointCloud(transformed_point, intensity);  // virtual
 
 			++number_of_points_in_cloud_;
 		}

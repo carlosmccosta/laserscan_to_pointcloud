@@ -26,6 +26,7 @@
 // external libs includes
 
 // project includes
+#include <laserscan_to_pointcloud/tf_rosmsg_eigen_conversions.h>
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </includes>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -56,6 +57,13 @@ class TFCollector {
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <TFCollector-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		bool collectTFs(const std::string& target_frame, const std::string& source_frame, const ros::Time& start_time, const ros::Time& endtime, size_t number_tfs,
 				std::vector<tf2::Transform>& collected_tfs_out);
+
+		bool lookForTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const std::string& source_frame, const ros::Time& time,
+				const ros::Duration timeout = ros::Duration(0.1));
+
+		bool lookForTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const ros::Time& target_time,
+			    const std::string& source_frame, const ros::Time& source_time,
+			    const std::string& fixed_frame, const ros::Duration timeout = ros::Duration(0.1));
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </TFCollector-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 

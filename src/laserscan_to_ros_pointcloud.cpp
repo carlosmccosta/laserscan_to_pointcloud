@@ -16,9 +16,9 @@ namespace laserscan_to_pointcloud {
 
 // =============================================================================  <public-section>  ============================================================================
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-LaserScanToROSPointcloud::LaserScanToROSPointcloud(std::string target_frame, double min_range_cutoff_percentage, double max_range_cutoff_percentage) :
+LaserScanToROSPointcloud::LaserScanToROSPointcloud(std::string target_frame, bool include_laser_intensity, double min_range_cutoff_percentage, double max_range_cutoff_percentage) :
 		LaserScanToPointcloud(target_frame, min_range_cutoff_percentage, max_range_cutoff_percentage),
-		include_laser_intensity_(false),
+		include_laser_intensity_(include_laser_intensity),
 		pointcloud_data_position_(NULL) {
 }
 
@@ -26,8 +26,7 @@ LaserScanToROSPointcloud::~LaserScanToROSPointcloud() {	}
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </constructors-destructor>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToROSPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-void LaserScanToROSPointcloud::initNewPointCloud(size_t number_of_reserved_points, bool include_laser_intensity) {
-	include_laser_intensity_ = include_laser_intensity;
+void LaserScanToROSPointcloud::initNewPointCloud(size_t number_of_reserved_points) {
 	pointcloud_ = sensor_msgs::PointCloud2Ptr(new sensor_msgs::PointCloud2());
 	resetNumberOfPointsInCloud();
 	resetNumberOfScansAsembledInCurrentCloud();
@@ -67,10 +66,10 @@ void LaserScanToROSPointcloud::initNewPointCloud(size_t number_of_reserved_point
 	incrementNumberOfPointCloudsCreated();
 }
 
-void LaserScanToROSPointcloud::addMeasureToPointCloud(float x, float y, float z, float intensity) {
-	*pointcloud_data_position_++ = x;
-	*pointcloud_data_position_++ = y;
-	*pointcloud_data_position_++ = z;
+void LaserScanToROSPointcloud::addMeasureToPointCloud(const tf2::Vector3& point, float intensity) {
+	*pointcloud_data_position_++ = (float)point.getX();
+	*pointcloud_data_position_++ = (float)point.getY();
+	*pointcloud_data_position_++ = (float)point.getZ();
 
 	if (include_laser_intensity_) {
 		*pointcloud_data_position_++ = intensity;
@@ -87,9 +86,21 @@ void LaserScanToROSPointcloud::finishLaserScanIntegration() {
 	pointcloud_->row_step = pointcloud_->width * pointcloud_->point_step;
 	pointcloud_->data.resize(pointcloud_->height * pointcloud_->row_step); // resize to shrink the vector size to the real number of points inserted
 }
-
-
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToROSPointcloud-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+void LaserScanToROSPointcloud::setIncludeLaserIntensity(bool include_laser_intensity) {
+	if (include_laser_intensity != include_laser_intensity_) {
+		include_laser_intensity_ = include_laser_intensity;
+		initNewPointCloud();
+	} else {
+		include_laser_intensity_ = include_laser_intensity;
+	}
+}
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </sets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
 // =============================================================================  </public-section>  ===========================================================================
 
 // =============================================================================   <protected-section>   =======================================================================

@@ -56,8 +56,8 @@ class LaserScanToPointcloud {
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </constructors-destructor>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloud-virtual-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		virtual void initNewPointCloud(size_t number_of_reserved_points = 684, bool include_laser_intensity = false) = 0;
-		virtual void addMeasureToPointCloud(float x, float y, float z, float intensity) = 0;
+		virtual void initNewPointCloud(size_t number_of_reserved_points = 684) = 0;
+		virtual void addMeasureToPointCloud(const tf2::Vector3& point, float intensity) = 0;
 		virtual void setupPointCloudForNewLaserScan(size_t number_laser_scan_points) = 0;
 		virtual void finishLaserScanIntegration() = 0;
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToPointcloud-virtual-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

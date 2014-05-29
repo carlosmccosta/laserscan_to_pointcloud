@@ -30,20 +30,41 @@ bool TFCollector::collectTFs(const std::string& target_frame, const std::string&
 	ros::Time current_tf_time = start_time;
 	ros::Duration next_tf_time_increment((endtime - start_time).toSec() / (number_tfs - 1));
 	for (size_t tf_number = 0; tf_number < number_tfs; ++tf_number) {
-		try {
-			geometry_msgs::TransformStamped tf = tf2_buffer_.lookupTransform(target_frame, source_frame, current_tf_time, next_tf_time_increment);
-			tf2::Quaternion rotation(tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z, tf.transform.rotation.w);
-			tf2::Vector3 origin(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z);
-			collected_tfs_out.push_back(tf2::Transform(rotation, origin));
-		} catch (...) {
-			// tf not available...
+		tf2::Transform tf2;
+		if (lookForTransform(tf2, target_frame, source_frame, current_tf_time, next_tf_time_increment)) {
+			collected_tfs_out.push_back(tf2);
 		}
-
 		current_tf_time += next_tf_time_increment;
 	}
 
 	return !collected_tfs_out.empty();
 }
+
+
+bool TFCollector::lookForTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const std::string& source_frame, const ros::Time& time,
+		const ros::Duration timeout) {
+	try {
+		geometry_msgs::TransformStamped tf = tf2_buffer_.lookupTransform(target_frame, source_frame, time, timeout);
+		tf_rosmsg_eigen_conversions::transformMsgToTF2(tf.transform, tf2_transformOut);
+		return true;
+	} catch (...) { // no transform available
+		return false;
+	}
+}
+
+
+bool TFCollector::lookForTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const ros::Time& target_time,
+	    const std::string& source_frame, const ros::Time& source_time,
+	    const std::string& fixed_frame, const ros::Duration timeout) {
+	try {
+		geometry_msgs::TransformStamped tf = tf2_buffer_.lookupTransform(target_frame, target_time, source_frame, source_time, fixed_frame, timeout);
+		tf_rosmsg_eigen_conversions::transformMsgToTF2(tf.transform, tf2_transformOut);
+		return true;
+	} catch (...) { // no transform available
+		return false;
+	}
+}
+
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </TFCollector-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 // =============================================================================  </public-section>   ==========================================================================
 
@@ -53,3 +74,4 @@ bool TFCollector::collectTFs(const std::string& target_frame, const std::string&
 // =============================================================================   <private-section>   =========================================================================
 // =============================================================================   </private-section>  =========================================================================
 } /* namespace laserscan_to_pointcloud */
+
