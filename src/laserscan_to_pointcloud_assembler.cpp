@@ -28,6 +28,7 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 	private_node_handle_->param("min_range_cutoff_percentage_offset", min_range_cutoff_percentage_offset_, 1.05);
 	private_node_handle_->param("max_range_cutoff_percentage_offset", max_range_cutoff_percentage_offset_, 0.95);
 	private_node_handle_->param("include_laser_intensity", include_laser_intensity_, false);
+	private_node_handle_->param("interpolate_scans", interpolate_scans_, true);
 	timeout_for_cloud_assembly_.fromSec(timeout_for_cloud_assembly);
 
 	propagatePointCloudAssemblerConfigs();
@@ -46,6 +47,7 @@ void LaserScanToPointcloudAssembler::propagatePointCloudAssemblerConfigs() {
 	laserscan_to_pointcloud_.setIncludeLaserIntensity(include_laser_intensity_);
 	laserscan_to_pointcloud_.setMinRangeCutoffPercentageOffset(min_range_cutoff_percentage_offset_);
 	laserscan_to_pointcloud_.setMaxRangeCutoffPercentageOffset(max_range_cutoff_percentage_offset_);
+	laserscan_to_pointcloud_.setInterpolateScans(interpolate_scans_);
 }
 
 
@@ -78,7 +80,7 @@ void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserSc
 	timeout_for_cloud_assembly_reached_ = (ros::Time::now() - laserscan_to_pointcloud_.getPointcloud()->header.stamp) > timeout_for_cloud_assembly_;
 	number_of_scans_in_current_pointcloud = (int)laserscan_to_pointcloud_.getNumberOfScansAssembledInCurrentPointcloud();
 	if ((number_of_scans_in_current_pointcloud >= number_of_scans_to_assemble_per_cloud_ || timeout_for_cloud_assembly_reached_) && laserscan_to_pointcloud_.getNumberOfPointsInCloud() > 0) {
-		laserscan_to_pointcloud_.getPointcloud()->header.stamp = ros::Time::now();
+		laserscan_to_pointcloud_.getPointcloud()->header.stamp = laser_scan->header.stamp;
 		pointcloud_publisher_.publish(laserscan_to_pointcloud_.getPointcloud());
 
 		ROS_DEBUG_STREAM("Publishing cloud with " << laserscan_to_pointcloud_.getPointcloud()->width << " points assembled from " << number_of_scans_in_current_pointcloud << " LaserScans" \
@@ -97,7 +99,8 @@ void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_poi
 				<< "\n\t[target_frame]: " 							<< target_frame_ 							<< " -> " << config.target_frame \
 				<< "\n\t[min_range_cutoff_percentage_offset]: " 	<< min_range_cutoff_percentage_offset_ 		<< " -> " << config.min_range_cutoff_percentage_offset \
 				<< "\n\t[max_range_cutoff_percentage_offset]: " 	<< max_range_cutoff_percentage_offset_ 		<< " -> " << config.max_range_cutoff_percentage_offset \
-				<< "\n\t[include_laser_intensity]: " 				<< include_laser_intensity_					<< " -> " << (config.include_laser_intensity ? "True" : "False"));
+				<< "\n\t[include_laser_intensity]: " 				<< include_laser_intensity_					<< " -> " << (config.include_laser_intensity ? "True" : "False") \
+				<< "\n\t[interpolate_scans]: " 						<< interpolate_scans_						<< " -> " << (config.interpolate_scans ? "True" : "False"));
 
 		if (!config.laser_scan_topic.empty() && laser_scan_topic_ != config.laser_scan_topic) {
 			laser_scan_topic_ = config.laser_scan_topic;
@@ -117,6 +120,7 @@ void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_poi
 		min_range_cutoff_percentage_offset_ = config.min_range_cutoff_percentage_offset;
 		max_range_cutoff_percentage_offset_ = config.max_range_cutoff_percentage_offset;
 		include_laser_intensity_ = config.include_laser_intensity;
+		interpolate_scans_ = config.interpolate_scans;
 
 		propagatePointCloudAssemblerConfigs();
 	}

@@ -22,10 +22,11 @@ void transformMsgToTF2(const geometry_msgs::Transform& msg, tf2::Transform& tf2)
 }
 
 void transformTF2ToMsg(const tf2::Transform& tf2, geometry_msgs::Transform& msg) {
-	msg.rotation.x = tf2.getRotation().x();
-	msg.rotation.y = tf2.getRotation().y();
-	msg.rotation.z = tf2.getRotation().z();
-	msg.rotation.w = tf2.getRotation().w();
+	tf2::Quaternion rotation = tf2.getRotation();
+	msg.rotation.x = rotation.x();
+	msg.rotation.y = rotation.y();
+	msg.rotation.z = rotation.z();
+	msg.rotation.w = rotation.w();
 	msg.translation.x = tf2.getOrigin().x();
 	msg.translation.y = tf2.getOrigin().y();
 	msg.translation.z = tf2.getOrigin().z();
@@ -42,6 +43,7 @@ void transformTF2ToMsg(const tf2::Transform& tf2, geometry_msgs::Pose& msg) {
 	msg.orientation.x = rotation.getX();
 	msg.orientation.y = rotation.getY();
 	msg.orientation.z = rotation.getZ();
+	msg.orientation.w = rotation.getW();
 }
 
 
@@ -86,6 +88,7 @@ void transformTF2ToMsg(const tf2::Vector3& tf2, geometry_msgs::Point& msg) {
 
 void transformMatrixToTF2(const Eigen::Matrix4f& matrix, tf2::Transform& tf2) {
 	Eigen::Matrix4d doubleMatrix(matrix.cast<double>());
+//	Eigen::Matrix<double, 4, 4, Eigen::ColMajor> doubleMatrix(matrix.cast<double>());
 	tf2.setFromOpenGLMatrix(doubleMatrix.data());
 }
 

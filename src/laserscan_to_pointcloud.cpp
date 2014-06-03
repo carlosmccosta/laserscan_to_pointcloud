@@ -17,9 +17,10 @@
 namespace laserscan_to_pointcloud {
 // =============================================================================  <public-section>   ===========================================================================
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-LaserScanToPointcloud::LaserScanToPointcloud(std::string target_frame, double min_range_cutoff_percentage, double max_range_cutoff_percentage) :
+LaserScanToPointcloud::LaserScanToPointcloud(std::string target_frame, double min_range_cutoff_percentage, double max_range_cutoff_percentage, bool interpolate_scans) :
 		target_frame_(target_frame),
 		min_range_cutoff_percentage_offset_(min_range_cutoff_percentage), max_range_cutoff_percentage_offset_(max_range_cutoff_percentage),
+		interpolate_scans_(interpolate_scans),
 		number_of_pointclouds_created_(0),
 		number_of_points_in_cloud_(0),
 		number_of_scans_assembled_in_current_pointcloud_(0),
@@ -87,8 +88,12 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 	tf2Scalar one_scan_step_percentage = 1.0 / (double)number_of_scan_steps;
 	tf2Scalar current_scan_percentage = 0;
 	tf2::Transform point_transform;
-	if (collected_tfs.size() == 1) { point_transform = collected_tfs[0]; }
-
+	if (collected_tfs.size() == 1) {
+		point_transform = collected_tfs[0];
+	} else if (!interpolate_scans_) {
+		point_transform.getOrigin().setInterpolate3(collected_tfs[0].getOrigin(), collected_tfs[1].getOrigin(), 0.5);
+		point_transform.setRotation(tf2::slerp(collected_tfs[0].getRotation(), collected_tfs[1].getRotation(), 0.5));
+	}
 
 	// laser scan projection and transformation
 	setupPointCloudForNewLaserScan(laser_scan->ranges.size());  // virtual
@@ -99,7 +104,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 			tf2::Vector3 projected_point(point_range_value * polar_to_cartesian_matrix_(0, point_pos), point_range_value * polar_to_cartesian_matrix_(1, point_pos), 0);
 
 			// interpolate position and rotation
-			if (collected_tfs.size() == 2) {
+			if (collected_tfs.size() == 2 && interpolate_scans_) {
 				point_transform.getOrigin().setInterpolate3(collected_tfs[0].getOrigin(), collected_tfs[1].getOrigin(), current_scan_percentage);
 				point_transform.setRotation(tf2::slerp(collected_tfs[0].getRotation(), collected_tfs[1].getRotation(), current_scan_percentage));
 			}

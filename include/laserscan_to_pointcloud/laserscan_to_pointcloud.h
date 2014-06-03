@@ -51,7 +51,7 @@ class LaserScanToPointcloud {
 
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		LaserScanToPointcloud(std::string target_frame = "", double min_range_cutoff_percentage = 1.05, double max_range_cutoff_percentage = 0.95);
+		LaserScanToPointcloud(std::string target_frame = "", double min_range_cutoff_percentage = 1.05, double max_range_cutoff_percentage = 0.95, bool interpolate_scans = false);
 		virtual ~LaserScanToPointcloud();
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </constructors-destructor>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -75,6 +75,7 @@ class LaserScanToPointcloud {
 		inline size_t getNumberOfPointcloudsCreated() const { return number_of_pointclouds_created_; }
 		inline size_t getNumberOfPointsInCloud() const { return number_of_points_in_cloud_; }
 		inline size_t getNumberOfScansAssembledInCurrentPointcloud() const { return number_of_scans_assembled_in_current_pointcloud_; }
+		inline bool isInterpolateScans() const { return interpolate_scans_; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </gets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -84,6 +85,7 @@ class LaserScanToPointcloud {
 		inline void incrementNumberOfPointCloudsCreated() { ++number_of_pointclouds_created_; }
 		inline void resetNumberOfPointsInCloud() { number_of_points_in_cloud_ = 0; }
 		inline void resetNumberOfScansAsembledInCurrentCloud() { number_of_scans_assembled_in_current_pointcloud_ = 0; }
+		inline void setInterpolateScans(bool interpolate_scans) { interpolate_scans_ = interpolate_scans; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </sets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	// ========================================================================   </public-section>   ==========================================================================
 
@@ -98,6 +100,7 @@ class LaserScanToPointcloud {
 		std::string target_frame_;
 		double min_range_cutoff_percentage_offset_;
 		double max_range_cutoff_percentage_offset_;
+		bool interpolate_scans_;
 
 		// state fields
 		size_t number_of_pointclouds_created_;

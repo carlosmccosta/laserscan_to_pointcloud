@@ -14,6 +14,7 @@ set(${PROJECT_NAME}_CATKIN_COMPONENTS
     tf2_ros
     rosconsole
     dynamic_reconfigure
+    cmake_modules
 )
 
 find_package(catkin REQUIRED COMPONENTS ${${PROJECT_NAME}_CATKIN_COMPONENTS})
@@ -31,10 +32,7 @@ generate_dynamic_reconfigure_options(
 
 catkin_package(
     INCLUDE_DIRS include
-    LIBRARIES
-        tf_rosmsg_eigen_conversions
-        tf_collector
-        laserscan_to_pointcloud
+    LIBRARIES tf_rosmsg_eigen_conversions tf_collector laserscan_to_pointcloud
     CATKIN_DEPENDS ${${PROJECT_NAME}_CATKIN_COMPONENTS}
     DEPENDS Eigen
 )
