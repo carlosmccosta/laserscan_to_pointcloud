@@ -17,6 +17,7 @@ namespace laserscan_to_pointcloud {
 // =============================================================================  <public-section>   ===========================================================================
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 TFCollector::TFCollector() :
+		tf2_buffer_(ros::Duration(30.0)),
 		tf2_transform_listener_(tf2_buffer_) {}
 
 TFCollector::~TFCollector() {}

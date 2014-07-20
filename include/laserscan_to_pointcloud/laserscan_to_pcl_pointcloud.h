@@ -29,8 +29,7 @@ namespace laserscan_to_pointcloud {
 /**
  * \brief Description...
  */
-template<typename PointT>
-class LaserScanToPCLPointcloud {
+class LaserScanToPCLPointcloud : public LaserScanToPointcloud {
 	// ========================================================================   <public-section>   ===========================================================================
 	public:
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <typedefs>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -70,7 +69,7 @@ class LaserScanToPCLPointcloud {
 
 	// ========================================================================   <private-section>   ==========================================================================
 	private:
-		pcl::PointCloud<PointT>::Ptr pcl_pointcloud_;
+		pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_pointcloud_;
 	// ========================================================================   </private-section>  ==========================================================================
 };
 
