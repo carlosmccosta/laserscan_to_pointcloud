@@ -12,6 +12,9 @@
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <includes>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 // std includes
+#include <vector>
+#include <string>
+#include <sstream>
 
 // ROS includes
 #include <ros/ros.h>
@@ -48,6 +51,7 @@ class LaserScanToPointcloudAssembler {
 		LaserScanToPointcloudAssembler(ros::NodeHandlePtr& node_handle, ros::NodeHandlePtr& private_node_handle);
 		virtual ~LaserScanToPointcloudAssembler();
 
+		void setupLaserScansSubscribers(std::string laser_scan_topics);
 		void propagatePointCloudAssemblerConfigs();
 		void startAssemblingLaserScans();
 		void stopAssemblingLaserScans();
@@ -73,7 +77,7 @@ class LaserScanToPointcloudAssembler {
 	// ========================================================================   <private-section>   ==========================================================================
 	private:
 		// assembler config fields
-		std::string laser_scan_topic_;
+		std::string laser_scan_topics_;
 		std::string pointcloud_publish_topic_;
 		int number_of_scans_to_assemble_per_cloud_;
 		ros::Duration timeout_for_cloud_assembly_;
@@ -93,7 +97,7 @@ class LaserScanToPointcloudAssembler {
 		// communication fields
 		ros::NodeHandlePtr node_handle_;
 		ros::NodeHandlePtr private_node_handle_;
-		ros::Subscriber laserscan_subscriber_;
+		std::vector<ros::Subscriber> laserscan_subscribers_;
 		ros::Publisher pointcloud_publisher_;
 
 		dynamic_reconfigure::Server<laserscan_to_pointcloud::LaserScanToPointcloudAssemblerConfig> dynamic_reconfigure_server_;

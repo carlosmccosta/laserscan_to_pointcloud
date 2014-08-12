@@ -20,8 +20,8 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 		node_handle_(node_handle), private_node_handle_(private_node_handle) {
 
 	double timeout_for_cloud_assembly = 5.0;
-	private_node_handle_->param("laser_scan_topic", laser_scan_topic_, std::string("tilt_scan"));
-	private_node_handle_->param("pointcloud_publish_topic", pointcloud_publish_topic_, std::string("assembled_pointcloud"));
+	private_node_handle_->param("laser_scan_topics", laser_scan_topics_, std::string("tilt_scan"));
+	private_node_handle_->param("pointcloud_publish_topic", pointcloud_publish_topic_, std::string("ambient_pointcloud"));
 	private_node_handle_->param("number_of_scans_to_assemble_per_cloud", number_of_scans_to_assemble_per_cloud_, 10);
 	private_node_handle_->param("timeout_for_cloud_assembly", timeout_for_cloud_assembly, 5.0);
 	private_node_handle_->param("target_frame", target_frame_, std::string("map"));
@@ -42,6 +42,17 @@ LaserScanToPointcloudAssembler::~LaserScanToPointcloudAssembler() {	}
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloudAssembler-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+void LaserScanToPointcloudAssembler::setupLaserScansSubscribers(std::string laser_scan_topics) {
+	std::stringstream ss(laser_scan_topics);
+	std::string topic_name;
+
+	while (ss >> topic_name && !topic_name.empty()) {
+		ros::Subscriber laserscan_subscriber = node_handle_->subscribe(topic_name, 100, &laserscan_to_pointcloud::LaserScanToPointcloudAssembler::processLaserScan, this);
+		laserscan_subscribers_.push_back(laserscan_subscriber);
+		ROS_INFO_STREAM("Adding " << topic_name << " to the list of LaserScan topics to assemble");
+	}
+}
+
 void LaserScanToPointcloudAssembler::propagatePointCloudAssemblerConfigs() {
 	laserscan_to_pointcloud_.setTargetFrame(target_frame_);
 	laserscan_to_pointcloud_.setIncludeLaserIntensity(include_laser_intensity_);
@@ -52,13 +63,16 @@ void LaserScanToPointcloudAssembler::propagatePointCloudAssemblerConfigs() {
 
 
 void LaserScanToPointcloudAssembler::startAssemblingLaserScans() {
-	laserscan_subscriber_ = node_handle_->subscribe(laser_scan_topic_, 100, &laserscan_to_pointcloud::LaserScanToPointcloudAssembler::processLaserScan, this);
-	pointcloud_publisher_ = node_handle_->advertise<sensor_msgs::PointCloud2>(pointcloud_publish_topic_, 10);
+	setupLaserScansSubscribers(laser_scan_topics_);
+	pointcloud_publisher_ = node_handle_->advertise<sensor_msgs::PointCloud2>(pointcloud_publish_topic_, 10, true);
 }
 
 
 void LaserScanToPointcloudAssembler::stopAssemblingLaserScans() {
-	laserscan_subscriber_.shutdown();
+	for (size_t i = 0; i < laserscan_subscribers_.size(); ++i) {
+		laserscan_subscribers_[i].shutdown();
+	}
+
 	pointcloud_publisher_.shutdown();
 }
 
@@ -92,7 +106,7 @@ void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserSc
 void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_pointcloud::LaserScanToPointcloudAssemblerConfig& config, uint32_t level) {
 	if (level == 1) {
 		ROS_INFO_STREAM("LaserScanToPointcloudAssembler dynamic reconfigure (level=" << level << ") -> " \
-				<< "\n\t[laser_scan_topic]: " 						<< laser_scan_topic_ 						<< " -> " << config.laser_scan_topic \
+				<< "\n\t[laser_scan_topic]: " 						<< laser_scan_topics_ 						<< " -> " << config.laser_scan_topic \
 				<< "\n\t[pointcloud_publish_topic]: " 				<< pointcloud_publish_topic_				<< " -> " << config.pointcloud_publish_topic \
 				<< "\n\t[number_of_scans_to_assemble_per_cloud]: "	<< number_of_scans_to_assemble_per_cloud_ 	<< " -> " << config.number_of_scans_to_assemble_per_cloud \
 				<< "\n\t[timeout_for_cloud_assembly]: "				<< timeout_for_cloud_assembly_.toSec() 		<< " -> " << config.timeout_for_cloud_assembly \
@@ -102,16 +116,19 @@ void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_poi
 				<< "\n\t[include_laser_intensity]: " 				<< include_laser_intensity_					<< " -> " << (config.include_laser_intensity ? "True" : "False") \
 				<< "\n\t[interpolate_scans]: " 						<< interpolate_scans_						<< " -> " << (config.interpolate_scans ? "True" : "False"));
 
-		if (!config.laser_scan_topic.empty() && laser_scan_topic_ != config.laser_scan_topic) {
-			laser_scan_topic_ = config.laser_scan_topic;
-			laserscan_subscriber_.shutdown();
-			laserscan_subscriber_ = node_handle_->subscribe(laser_scan_topic_, 100, &laserscan_to_pointcloud::LaserScanToPointcloudAssembler::processLaserScan, this);
+		if (!config.laser_scan_topic.empty() && laser_scan_topics_ != config.laser_scan_topic) {
+			laser_scan_topics_ = config.laser_scan_topic;
+			for (size_t i = 0; i < laserscan_subscribers_.size(); ++i) {
+				laserscan_subscribers_[i].shutdown();
+			}
+
+			setupLaserScansSubscribers(laser_scan_topics_);
 		}
 
 		if (!config.pointcloud_publish_topic.empty() && pointcloud_publish_topic_ != config.pointcloud_publish_topic) {
 			pointcloud_publish_topic_ = config.pointcloud_publish_topic;
 			pointcloud_publisher_.shutdown();
-			pointcloud_publisher_ = node_handle_->advertise<sensor_msgs::PointCloud2>(pointcloud_publish_topic_, 10);
+			pointcloud_publisher_ = node_handle_->advertise<sensor_msgs::PointCloud2>(pointcloud_publish_topic_, 10, true);
 		}
 
 		number_of_scans_to_assemble_per_cloud_ = config.number_of_scans_to_assemble_per_cloud;
@@ -137,3 +154,4 @@ void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_poi
 
 
 } /* namespace laserscan_to_pointcloud */
+
