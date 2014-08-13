@@ -43,6 +43,8 @@ LaserScanToPointcloudAssembler::~LaserScanToPointcloudAssembler() {	}
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloudAssembler-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void LaserScanToPointcloudAssembler::setupLaserScansSubscribers(std::string laser_scan_topics) {
+	std::replace(laser_scan_topics.begin(), laser_scan_topics.end(), '+', ' ');
+
 	std::stringstream ss(laser_scan_topics);
 	std::string topic_name;
 

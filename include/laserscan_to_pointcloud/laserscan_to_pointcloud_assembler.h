@@ -15,6 +15,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <algorithm>
 
 // ROS includes
 #include <ros/ros.h>
