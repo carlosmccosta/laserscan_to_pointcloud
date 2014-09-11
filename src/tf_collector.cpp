@@ -30,7 +30,7 @@ bool TFCollector::collectTFs(const std::string& target_frame, const std::string&
 
 	ros::Time current_tf_time = start_time;
 	ros::Duration next_tf_time_increment((endtime - start_time).toSec() / (number_tfs - 1));
-	ros::Duration tf_timeout(0.015);
+	ros::Duration tf_timeout(0.1);
 	for (size_t tf_number = 0; tf_number < number_tfs; ++tf_number) {
 		tf2::Transform tf2;
 		if (lookForTransform(tf2, target_frame, source_frame, current_tf_time, tf_timeout)) {
