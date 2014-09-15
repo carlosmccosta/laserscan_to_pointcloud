@@ -62,12 +62,14 @@ class TFCollector {
 				const ros::Duration timeout = ros::Duration(0.1));
 
 		bool lookForTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const ros::Time& target_time,
-			    const std::string& source_frame, const ros::Time& source_time,
-			    const std::string& fixed_frame, const ros::Duration timeout = ros::Duration(0.1));
+				const std::string& source_frame, const ros::Time& source_time,
+				const std::string& fixed_frame, const ros::Duration timeout = ros::Duration(0.1));
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </TFCollector-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <gets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+		tf2_ros::Buffer& getTf2Buffer() { return tf2_buffer_; }
+		tf2_ros::TransformListener& getTf2TransformListener() { return tf2_transform_listener_; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </gets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
