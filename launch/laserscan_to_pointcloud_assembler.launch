@@ -4,6 +4,7 @@
 	<arg name="target_frame" default="map" />
 	<arg name="timeout_for_cloud_assembly" default="1.0" />
 	<arg name="laser_scan_topics" default="tilt_scan" />
+	<arg name="interpolate_scans" default="true" />
 
 
 	<!-- LaserScan assembler -->
@@ -16,6 +17,6 @@
 		<param name="min_range_cutoff_percentage_offset" type="double" value="5.00" />
 		<param name="max_range_cutoff_percentage_offset" type="double" value="0.95" />
 		<param name="include_laser_intensity" type="bool" value="false" />
-		<param name="interpolate_scans" type="bool" value="false" />
+		<param name="interpolate_scans" type="bool" value="$(arg interpolate_scans)" />
 	</node>
 </launch>

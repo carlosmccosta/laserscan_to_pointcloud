@@ -112,14 +112,16 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 			// transform point to target frame of reference
 			tf2::Vector3 transformed_point = point_transform * projected_point;
 
-			// copy point to pointcloud
-			float intensity = 0;
-			if (point_pos < laser_scan->intensities.size()) {
-				intensity = (float)laser_scan->intensities[point_pos];
-			}
-			addMeasureToPointCloud(transformed_point, intensity);  // virtual
+			if (boost::math::isfinite(transformed_point.x()) && boost::math::isfinite(transformed_point.y()) && boost::math::isfinite(transformed_point.z())) {
+				// copy point to pointcloud
+				float intensity = 0;
+				if (point_pos < laser_scan->intensities.size()) {
+					intensity = (float)laser_scan->intensities[point_pos];
+				}
 
-			++number_of_points_in_cloud_;
+				addMeasureToPointCloud(transformed_point, intensity);  // virtual
+				++number_of_points_in_cloud_;
+			}
 		}
 		current_scan_percentage += one_scan_step_percentage;
 	}

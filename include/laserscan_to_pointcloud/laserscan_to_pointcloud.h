@@ -25,6 +25,7 @@
 #include <tf2/LinearMath/Transform.h>
 
 // external includes
+#include <boost/math/special_functions/fpclassify.hpp>
 #include <Eigen/Core>
 
 // project includes

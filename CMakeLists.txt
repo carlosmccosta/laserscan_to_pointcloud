@@ -19,6 +19,7 @@ set(${PROJECT_NAME}_CATKIN_COMPONENTS
 
 find_package(catkin REQUIRED COMPONENTS ${${PROJECT_NAME}_CATKIN_COMPONENTS})
 find_package(Eigen REQUIRED)
+find_package(Boost REQUIRED)
 
 
 
@@ -34,7 +35,9 @@ catkin_package(
     INCLUDE_DIRS include
     LIBRARIES tf_rosmsg_eigen_conversions tf_collector laserscan_to_pointcloud
     CATKIN_DEPENDS ${${PROJECT_NAME}_CATKIN_COMPONENTS}
-    DEPENDS Eigen
+    DEPENDS
+        Eigen
+        Boost
 )
 
 
@@ -46,6 +49,7 @@ catkin_package(
 include_directories(
     include
     ${Eigen_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
 )
 
