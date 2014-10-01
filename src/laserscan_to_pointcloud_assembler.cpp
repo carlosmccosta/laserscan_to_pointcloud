@@ -29,6 +29,7 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 	private_node_handle_->param("max_range_cutoff_percentage_offset", max_range_cutoff_percentage_offset_, 0.95);
 	private_node_handle_->param("include_laser_intensity", include_laser_intensity_, false);
 	private_node_handle_->param("interpolate_scans", interpolate_scans_, true);
+	private_node_handle_->param("tf_lookup_timeout", tf_lookup_timeout_, 0.2);
 	timeout_for_cloud_assembly_.fromSec(timeout_for_cloud_assembly);
 
 	propagatePointCloudAssemblerConfigs();
@@ -61,6 +62,7 @@ void LaserScanToPointcloudAssembler::propagatePointCloudAssemblerConfigs() {
 	laserscan_to_pointcloud_.setMinRangeCutoffPercentageOffset(min_range_cutoff_percentage_offset_);
 	laserscan_to_pointcloud_.setMaxRangeCutoffPercentageOffset(max_range_cutoff_percentage_offset_);
 	laserscan_to_pointcloud_.setInterpolateScans(interpolate_scans_);
+	laserscan_to_pointcloud_.setTFLookupTimeout(tf_lookup_timeout_);
 }
 
 
@@ -90,7 +92,7 @@ void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserSc
 	}
 
 	if (!laserscan_to_pointcloud_.integrateLaserScanWithShpericalLinearInterpolation(laser_scan)) {
-		ROS_DEBUG_STREAM("Dropped " << ++number_droped_laserscans_ << " LaserScans because of missing TFs between [" << laser_scan->header.frame_id << "] and [" << target_frame_ << "]");
+		ROS_WARN_STREAM("Dropped LaserScan with " << laser_scan->ranges.size() << " points because of missing TFs between [" << laser_scan->header.frame_id << "] and [" << target_frame_ << "]" << " (dropped " << ++number_droped_laserscans_ << " LaserScans so far)");
 	}
 
 	timeout_for_cloud_assembly_reached_ = (ros::Time::now() - laserscan_to_pointcloud_.getPointcloud()->header.stamp) > timeout_for_cloud_assembly_;

@@ -17,9 +17,10 @@
 namespace laserscan_to_pointcloud {
 // =============================================================================  <public-section>   ===========================================================================
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-LaserScanToPointcloud::LaserScanToPointcloud(std::string target_frame, double min_range_cutoff_percentage, double max_range_cutoff_percentage, bool interpolate_scans) :
+LaserScanToPointcloud::LaserScanToPointcloud(std::string target_frame, double min_range_cutoff_percentage, double max_range_cutoff_percentage, bool interpolate_scans, double tf_lookup_timeout) :
 		target_frame_(target_frame),
 		min_range_cutoff_percentage_offset_(min_range_cutoff_percentage), max_range_cutoff_percentage_offset_(max_range_cutoff_percentage),
+		tf_lookup_timeout_(tf_lookup_timeout),
 		interpolate_scans_(interpolate_scans),
 		number_of_pointclouds_created_(0),
 		number_of_points_in_cloud_(0),
@@ -78,7 +79,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 
 	// tfs setup
 	std::vector<tf2::Transform> collected_tfs;
-	tf_collector_.collectTFs(target_frame_, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs);
+	tf_collector_.collectTFs(target_frame_, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs, tf_lookup_timeout_);
 	if (collected_tfs.empty()) { return false; }
 	updatePolarToCartesianProjectionMatrix(laser_scan);
 

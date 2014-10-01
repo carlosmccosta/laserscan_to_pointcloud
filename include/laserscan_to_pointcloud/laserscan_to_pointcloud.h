@@ -18,7 +18,7 @@
 #include <string>
 
 // ROS includes
-#include <ros/console.h>
+#include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <tf2/LinearMath/Vector3.h>
@@ -52,7 +52,7 @@ class LaserScanToPointcloud {
 
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		LaserScanToPointcloud(std::string target_frame = "", double min_range_cutoff_percentage = 1.05, double max_range_cutoff_percentage = 0.95, bool interpolate_scans = false);
+		LaserScanToPointcloud(std::string target_frame = "", double min_range_cutoff_percentage = 1.05, double max_range_cutoff_percentage = 0.95, bool interpolate_scans = false, double tf_lookup_timeout = 0.2);
 		virtual ~LaserScanToPointcloud();
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </constructors-destructor>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -87,6 +87,7 @@ class LaserScanToPointcloud {
 		inline void resetNumberOfPointsInCloud() { number_of_points_in_cloud_ = 0; }
 		inline void resetNumberOfScansAsembledInCurrentCloud() { number_of_scans_assembled_in_current_pointcloud_ = 0; }
 		inline void setInterpolateScans(bool interpolate_scans) { interpolate_scans_ = interpolate_scans; }
+		inline void setTFLookupTimeout(double tf_lookup_timeout) { tf_lookup_timeout_.fromSec(tf_lookup_timeout); }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </sets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	// ========================================================================   </public-section>   ==========================================================================
 
@@ -102,6 +103,7 @@ class LaserScanToPointcloud {
 		double min_range_cutoff_percentage_offset_;
 		double max_range_cutoff_percentage_offset_;
 		bool interpolate_scans_;
+		ros::Duration tf_lookup_timeout_;
 
 		// state fields
 		size_t number_of_pointclouds_created_;

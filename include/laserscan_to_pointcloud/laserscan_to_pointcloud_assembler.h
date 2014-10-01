@@ -90,6 +90,7 @@ class LaserScanToPointcloudAssembler {
 		double max_range_cutoff_percentage_offset_;
 		bool include_laser_intensity_;
 		bool interpolate_scans_;
+		double tf_lookup_timeout_;
 
 		// state fieds
 		size_t number_droped_laserscans_;

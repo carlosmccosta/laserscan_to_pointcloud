@@ -25,12 +25,11 @@ TFCollector::~TFCollector() {}
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <TFCollector-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 bool TFCollector::collectTFs(const std::string& target_frame, const std::string& source_frame, const ros::Time& start_time, const ros::Time& endtime, size_t number_tfs,
-        std::vector<tf2::Transform>& collected_tfs_out) {
+        std::vector<tf2::Transform>& collected_tfs_out, const ros::Duration tf_timeout) {
 	collected_tfs_out.clear();
 
 	ros::Time current_tf_time = start_time;
 	ros::Duration next_tf_time_increment((endtime - start_time).toSec() / (number_tfs - 1));
-	ros::Duration tf_timeout(0.1);
 	for (size_t tf_number = 0; tf_number < number_tfs; ++tf_number) {
 		tf2::Transform tf2;
 		if (lookForTransform(tf2, target_frame, source_frame, current_tf_time, tf_timeout)) {
