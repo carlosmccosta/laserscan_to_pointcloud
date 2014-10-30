@@ -5,7 +5,7 @@
 	<arg name="timeout_for_cloud_assembly" default="1.0" />
 	<arg name="laser_scan_topics" default="tilt_scan" />
 	<arg name="interpolate_scans" default="true" />
-	<arg name="tf_lookup_timeout" default="0.2" />
+	<arg name="tf_lookup_timeout" default="0.25" />
 
 
 	<!-- LaserScan assembler -->

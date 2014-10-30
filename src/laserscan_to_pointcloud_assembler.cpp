@@ -50,7 +50,7 @@ void LaserScanToPointcloudAssembler::setupLaserScansSubscribers(std::string lase
 	std::string topic_name;
 
 	while (ss >> topic_name && !topic_name.empty()) {
-		ros::Subscriber laserscan_subscriber = node_handle_->subscribe(topic_name, 100, &laserscan_to_pointcloud::LaserScanToPointcloudAssembler::processLaserScan, this);
+		ros::Subscriber laserscan_subscriber = node_handle_->subscribe(topic_name, 5, &laserscan_to_pointcloud::LaserScanToPointcloudAssembler::processLaserScan, this);
 		laserscan_subscribers_.push_back(laserscan_subscriber);
 		ROS_INFO_STREAM("Adding " << topic_name << " to the list of LaserScan topics to assemble");
 	}
