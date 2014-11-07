@@ -22,7 +22,7 @@
 // external libs includes
 
 // project includes
-#include "laserscan_to_pointcloud/laserscan_to_pointcloud.h"
+#include <laserscan_to_pointcloud/laserscan_to_pointcloud.h>
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </includes>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 namespace laserscan_to_pointcloud {

@@ -6,7 +6,7 @@
  */
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <includes>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-#include "laserscan_to_pointcloud/laserscan_to_pointcloud.h"
+#include <laserscan_to_pointcloud/laserscan_to_pointcloud.h>
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </includes>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
@@ -79,8 +79,22 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 
 	// tfs setup
 	std::vector<tf2::Transform> collected_tfs;
+	if (!recovery_frame_.empty()) { // update recovery transform
+		double scan_middle_time = scan_start_time.toSec() + ((scan_end_time.toSec() - scan_start_time.toSec()) / 2.0);
+		tf_collector_.lookForTransform(recovery_to_target_frame_transform_, target_frame_, recovery_frame_, ros::Time(scan_middle_time), tf_lookup_timeout_);
+	}
+
 	tf_collector_.collectTFs(target_frame_, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs, tf_lookup_timeout_);
-	if (collected_tfs.empty()) { return false; }
+	if (collected_tfs.empty()) { // try to recover using [sensor_frame -> recovery_frame -> target_frame]
+		if (recovery_frame_.empty()) { return false; }
+		tf_collector_.collectTFs(recovery_frame_, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs, tf_lookup_timeout_);
+		if (collected_tfs.empty()) { return false; }
+
+		ROS_WARN_STREAM("Recovering from lack of tf between " << laser_scan->header.frame_id << " and " << target_frame_ << " using " << recovery_frame_ << " as recovery frame");
+		for (int i = 0; i < collected_tfs.size(); ++i) {
+			collected_tfs[i] = recovery_to_target_frame_transform_ * collected_tfs[i];
+		}
+	}
 	updatePolarToCartesianProjectionMatrix(laser_scan);
 
 	// projection and transformation setup
@@ -132,6 +146,9 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 	return true;
 }
 
+void LaserScanToPointcloud::setRecoveryFrame(const std::string& recovery_frame, const tf2::Transform& recovery_to_target_frame_transform) {
+	recovery_frame_ = recovery_frame; recovery_to_target_frame_transform_ = recovery_to_target_frame_transform;
+}
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToPointcloud-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 // =============================================================================  </public-section>   ==========================================================================
 

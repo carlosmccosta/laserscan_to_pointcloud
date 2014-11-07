@@ -19,6 +19,9 @@
 
 // ROS includes
 #include <ros/ros.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Vector3.h>
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <dynamic_reconfigure/server.h>
@@ -26,8 +29,8 @@
 // external libs includes
 
 // project includes
-#include "laserscan_to_pointcloud/laserscan_to_ros_pointcloud.h"
-#include "laserscan_to_pointcloud/LaserScanToPointcloudAssemblerConfig.h"
+#include <laserscan_to_pointcloud/laserscan_to_ros_pointcloud.h>
+#include <laserscan_to_pointcloud/LaserScanToPointcloudAssemblerConfig.h>
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </includes>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
@@ -53,7 +56,7 @@ class LaserScanToPointcloudAssembler {
 		virtual ~LaserScanToPointcloudAssembler();
 
 		void setupLaserScansSubscribers(std::string laser_scan_topics);
-		void propagatePointCloudAssemblerConfigs();
+		void setupRecoveryInitialPose();
 		void startAssemblingLaserScans();
 		void stopAssemblingLaserScans();
 		void processLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan);
@@ -85,12 +88,7 @@ class LaserScanToPointcloudAssembler {
 
 		// laserscan_to_pointcloud_ config fields
 		LaserScanToROSPointcloud laserscan_to_pointcloud_;
-		std::string target_frame_;
-		double min_range_cutoff_percentage_offset_;
-		double max_range_cutoff_percentage_offset_;
 		bool include_laser_intensity_;
-		bool interpolate_scans_;
-		double tf_lookup_timeout_;
 
 		// state fieds
 		size_t number_droped_laserscans_;

@@ -6,7 +6,8 @@
  */
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <includes>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-#include "laserscan_to_pointcloud/laserscan_to_pointcloud_assembler.h"
+#include <laserscan_to_pointcloud/laserscan_to_pointcloud_assembler.h>
+#include <string>
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </includes>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <imports>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -23,16 +24,23 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 	private_node_handle_->param("laser_scan_topics", laser_scan_topics_, std::string("tilt_scan"));
 	private_node_handle_->param("pointcloud_publish_topic", pointcloud_publish_topic_, std::string("ambient_pointcloud"));
 	private_node_handle_->param("number_of_scans_to_assemble_per_cloud", number_of_scans_to_assemble_per_cloud_, 10);
-	private_node_handle_->param("timeout_for_cloud_assembly", timeout_for_cloud_assembly, 5.0);
-	private_node_handle_->param("target_frame", target_frame_, std::string("map"));
-	private_node_handle_->param("min_range_cutoff_percentage_offset", min_range_cutoff_percentage_offset_, 1.05);
-	private_node_handle_->param("max_range_cutoff_percentage_offset", max_range_cutoff_percentage_offset_, 0.95);
-	private_node_handle_->param("include_laser_intensity", include_laser_intensity_, false);
-	private_node_handle_->param("interpolate_scans", interpolate_scans_, true);
-	private_node_handle_->param("tf_lookup_timeout", tf_lookup_timeout_, 0.2);
+	private_node_handle_->param("timeout_for_cloud_assembly", timeout_for_cloud_assembly, 1.0);
 	timeout_for_cloud_assembly_.fromSec(timeout_for_cloud_assembly);
 
-	propagatePointCloudAssemblerConfigs();
+	std::string target_frame_id;
+	double number;
+	bool boolean;
+	private_node_handle_->param("target_frame", target_frame_id, std::string("map"));
+	laserscan_to_pointcloud_.setTargetFrame(target_frame_id);
+	private_node_handle_->param("include_laser_intensity", include_laser_intensity_, false);
+	laserscan_to_pointcloud_.setIncludeLaserIntensity(include_laser_intensity_);
+	private_node_handle_->param("min_range_cutoff_percentage_offset", number, 1.05);
+	laserscan_to_pointcloud_.setMinRangeCutoffPercentageOffset(number);
+	private_node_handle_->param("max_range_cutoff_percentage_offset", number, 0.95);
+	laserscan_to_pointcloud_.setMaxRangeCutoffPercentageOffset(number);
+	private_node_handle_->param("interpolate_scans", boolean, true);
+	private_node_handle_->param("tf_lookup_timeout", number, 0.15);
+	laserscan_to_pointcloud_.setTFLookupTimeout(number);
 
 	dynamic_reconfigure::Server<laserscan_to_pointcloud::LaserScanToPointcloudAssemblerConfig>::CallbackType callback_dynamic_reconfigure =
 			boost::bind(&laserscan_to_pointcloud::LaserScanToPointcloudAssembler::dynamicReconfigureCallback, this, _1, _2);
@@ -56,19 +64,65 @@ void LaserScanToPointcloudAssembler::setupLaserScansSubscribers(std::string lase
 	}
 }
 
-void LaserScanToPointcloudAssembler::propagatePointCloudAssemblerConfigs() {
-	laserscan_to_pointcloud_.setTargetFrame(target_frame_);
-	laserscan_to_pointcloud_.setIncludeLaserIntensity(include_laser_intensity_);
-	laserscan_to_pointcloud_.setMinRangeCutoffPercentageOffset(min_range_cutoff_percentage_offset_);
-	laserscan_to_pointcloud_.setMaxRangeCutoffPercentageOffset(max_range_cutoff_percentage_offset_);
-	laserscan_to_pointcloud_.setInterpolateScans(interpolate_scans_);
-	laserscan_to_pointcloud_.setTFLookupTimeout(tf_lookup_timeout_);
+
+void LaserScanToPointcloudAssembler::setupRecoveryInitialPose() {
+	double x, y, z, roll, pitch ,yaw;
+	bool initial_recovery_transform_in_base_link_to_target;
+	std::string base_link_frame_id, recovery_frame_id;
+	private_node_handle_->param("recovery_frame", recovery_frame_id, std::string("odom"));
+	private_node_handle_->param("initial_recovery_transform_in_base_link_to_target", initial_recovery_transform_in_base_link_to_target, true);
+	private_node_handle_->param("base_link_frame_id", base_link_frame_id, std::string("base_footprint"));
+	private_node_handle_->param("recovery_to_target_frame_transform_initial_x", x, 0.0);
+	private_node_handle_->param("recovery_to_target_frame_transform_initial_y", y, 0.0);
+	private_node_handle_->param("recovery_to_target_frame_transform_initial_z", z, 0.0);
+	private_node_handle_->param("recovery_to_target_frame_transform_initial_roll", roll, 0.0);
+	private_node_handle_->param("recovery_to_target_frame_transform_initial_pitch", pitch, 0.0);
+	private_node_handle_->param("recovery_to_target_frame_transform_initial_yaw", yaw, 0.0);
+	tf2::Quaternion orientation;
+	orientation.setRPY(roll, pitch, yaw);
+	orientation.normalize();
+	tf2::Transform recovery_to_target_frame_transform(orientation, tf2::Vector3(x, y, z));
+
+	ros::Time::waitForValid();
+
+	if (initial_recovery_transform_in_base_link_to_target && !recovery_frame_id.empty() && !base_link_frame_id.empty()) {
+		ros::Time start_time = ros::Time::now();
+		ros::Time end_time = start_time + ros::Duration(10);
+		ros::Duration wait_duration(0.005);
+
+		bool success = false;
+		while (ros::Time::now() < end_time) {
+			tf2::Transform transform_recovery_to_base_link;
+			if (laserscan_to_pointcloud_.getTfCollector().lookForTransform(transform_recovery_to_base_link, base_link_frame_id, recovery_frame_id, ros::Time::now(), laserscan_to_pointcloud_.getTfLookupTimeout())) {
+				recovery_to_target_frame_transform = recovery_to_target_frame_transform * transform_recovery_to_base_link;
+				success = true;
+				break;
+			}
+			wait_duration.sleep();
+		}
+		if (!success) {
+			ROS_WARN("Failed to correct assembler recovery initial pose");
+		}
+	}
+
+	if (!recovery_frame_id.empty()) {
+		ROS_INFO_STREAM("Setting assembler recovery initial pose [ x: " << recovery_to_target_frame_transform.getOrigin().getX()
+				<< " y: " << recovery_to_target_frame_transform.getOrigin().getY()
+				<< " z: " << recovery_to_target_frame_transform.getOrigin().getZ()
+				<< " | qx: " << recovery_to_target_frame_transform.getRotation().getX()
+				<< " qy: " << recovery_to_target_frame_transform.getRotation().getY()
+				<< " qz: " << recovery_to_target_frame_transform.getRotation().getZ()
+				<< " qw: " << recovery_to_target_frame_transform.getRotation().getW()
+				<< " ]");
+		laserscan_to_pointcloud_.setRecoveryFrame(recovery_frame_id, recovery_to_target_frame_transform);
+	}
 }
 
 
 void LaserScanToPointcloudAssembler::startAssemblingLaserScans() {
-	setupLaserScansSubscribers(laser_scan_topics_);
+	setupRecoveryInitialPose();
 	pointcloud_publisher_ = node_handle_->advertise<sensor_msgs::PointCloud2>(pointcloud_publish_topic_, 10, true);
+	setupLaserScansSubscribers(laser_scan_topics_);
 }
 
 
@@ -92,7 +146,7 @@ void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserSc
 	}
 
 	if (!laserscan_to_pointcloud_.integrateLaserScanWithShpericalLinearInterpolation(laser_scan)) {
-		ROS_WARN_STREAM("Dropped LaserScan with " << laser_scan->ranges.size() << " points because of missing TFs between [" << laser_scan->header.frame_id << "] and [" << target_frame_ << "]" << " (dropped " << ++number_droped_laserscans_ << " LaserScans so far)");
+		ROS_WARN_STREAM("Dropped LaserScan with " << laser_scan->ranges.size() << " points because of missing TFs between [" << laser_scan->header.frame_id << "] and [" << laserscan_to_pointcloud_.getTargetFrame() << "]" << " (dropped " << ++number_droped_laserscans_ << " LaserScans so far)");
 	}
 
 	timeout_for_cloud_assembly_reached_ = (ros::Time::now() - laserscan_to_pointcloud_.getPointcloud()->header.stamp) > timeout_for_cloud_assembly_;
@@ -101,7 +155,7 @@ void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserSc
 		laserscan_to_pointcloud_.getPointcloud()->header.stamp = laser_scan->header.stamp;
 		pointcloud_publisher_.publish(laserscan_to_pointcloud_.getPointcloud());
 
-		ROS_DEBUG_STREAM("Publishing cloud with " << laserscan_to_pointcloud_.getPointcloud()->width << " points assembled from " << number_of_scans_in_current_pointcloud << " LaserScans" \
+		ROS_DEBUG_STREAM("Publishing cloud with " << (laserscan_to_pointcloud_.getPointcloud()->width * laserscan_to_pointcloud_.getPointcloud()->height) << " points assembled from " << number_of_scans_in_current_pointcloud << " LaserScans" \
 				<< (timeout_for_cloud_assembly_reached_ ? " (timeout reached)" : ""));
 	}
 }
@@ -110,18 +164,18 @@ void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserSc
 void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_pointcloud::LaserScanToPointcloudAssemblerConfig& config, uint32_t level) {
 	if (level == 1) {
 		ROS_INFO_STREAM("LaserScanToPointcloudAssembler dynamic reconfigure (level=" << level << ") -> " \
-				<< "\n\t[laser_scan_topic]: " 						<< laser_scan_topics_ 						<< " -> " << config.laser_scan_topic \
+				<< "\n\t[laser_scan_topics]: " 						<< laser_scan_topics_ 						<< " -> " << config.laser_scan_topics \
 				<< "\n\t[pointcloud_publish_topic]: " 				<< pointcloud_publish_topic_				<< " -> " << config.pointcloud_publish_topic \
 				<< "\n\t[number_of_scans_to_assemble_per_cloud]: "	<< number_of_scans_to_assemble_per_cloud_ 	<< " -> " << config.number_of_scans_to_assemble_per_cloud \
 				<< "\n\t[timeout_for_cloud_assembly]: "				<< timeout_for_cloud_assembly_.toSec() 		<< " -> " << config.timeout_for_cloud_assembly \
-				<< "\n\t[target_frame]: " 							<< target_frame_ 							<< " -> " << config.target_frame \
-				<< "\n\t[min_range_cutoff_percentage_offset]: " 	<< min_range_cutoff_percentage_offset_ 		<< " -> " << config.min_range_cutoff_percentage_offset \
-				<< "\n\t[max_range_cutoff_percentage_offset]: " 	<< max_range_cutoff_percentage_offset_ 		<< " -> " << config.max_range_cutoff_percentage_offset \
+				<< "\n\t[target_frame]: " 							<< laserscan_to_pointcloud_.getTargetFrame() << " -> " << config.target_frame \
+				<< "\n\t[min_range_cutoff_percentage_offset]: " 	<< laserscan_to_pointcloud_.getMinRangeCutoffPercentageOffset() << " -> " << config.min_range_cutoff_percentage_offset \
+				<< "\n\t[max_range_cutoff_percentage_offset]: " 	<< laserscan_to_pointcloud_.getMaxRangeCutoffPercentageOffset()	<< " -> " << config.max_range_cutoff_percentage_offset \
 				<< "\n\t[include_laser_intensity]: " 				<< include_laser_intensity_					<< " -> " << (config.include_laser_intensity ? "True" : "False") \
-				<< "\n\t[interpolate_scans]: " 						<< interpolate_scans_						<< " -> " << (config.interpolate_scans ? "True" : "False"));
+				<< "\n\t[interpolate_scans]: " 						<< laserscan_to_pointcloud_.isInterpolateScans() << " -> " << (config.interpolate_scans ? "True" : "False"));
 
-		if (!config.laser_scan_topic.empty() && laser_scan_topics_ != config.laser_scan_topic) {
-			laser_scan_topics_ = config.laser_scan_topic;
+		if (!config.laser_scan_topics.empty() && laser_scan_topics_ != config.laser_scan_topics) {
+			laser_scan_topics_ = config.laser_scan_topics;
 			for (size_t i = 0; i < laserscan_subscribers_.size(); ++i) {
 				laserscan_subscribers_[i].shutdown();
 			}
@@ -137,13 +191,13 @@ void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_poi
 
 		number_of_scans_to_assemble_per_cloud_ = config.number_of_scans_to_assemble_per_cloud;
 		timeout_for_cloud_assembly_.fromSec(config.timeout_for_cloud_assembly);
-		target_frame_ = config.target_frame;
-		min_range_cutoff_percentage_offset_ = config.min_range_cutoff_percentage_offset;
-		max_range_cutoff_percentage_offset_ = config.max_range_cutoff_percentage_offset;
 		include_laser_intensity_ = config.include_laser_intensity;
-		interpolate_scans_ = config.interpolate_scans;
 
-		propagatePointCloudAssemblerConfigs();
+		laserscan_to_pointcloud_.setTargetFrame(config.target_frame);
+		laserscan_to_pointcloud_.setMinRangeCutoffPercentageOffset(config.min_range_cutoff_percentage_offset);
+		laserscan_to_pointcloud_.setMaxRangeCutoffPercentageOffset(config.max_range_cutoff_percentage_offset);
+		laserscan_to_pointcloud_.setInterpolateScans(config.interpolate_scans);
+		laserscan_to_pointcloud_.setRecoveryFrame(config.recovery_frame);
 	}
 }
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToPointcloudAssembler-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
