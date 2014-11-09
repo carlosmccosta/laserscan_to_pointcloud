@@ -58,6 +58,8 @@ class TFCollector {
 		bool collectTFs(const std::string& target_frame, const std::string& source_frame, const ros::Time& start_time, const ros::Time& endtime, size_t number_tfs,
 				std::vector<tf2::Transform>& collected_tfs_out, const ros::Duration tf_timeout = ros::Duration(0.2));
 
+		bool lookForLatestTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const std::string& source_frame, const ros::Duration timeout = ros::Duration(10));
+
 		bool lookForTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const std::string& source_frame, const ros::Time& time,
 				const ros::Duration timeout = ros::Duration(0.2));
 

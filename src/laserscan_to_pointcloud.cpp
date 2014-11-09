@@ -76,23 +76,40 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 	ros::Duration scan_duration(number_of_scan_steps * laser_scan->time_increment);
 	ros::Time scan_start_time = laser_scan->header.stamp;
 	ros::Time scan_end_time = scan_start_time + scan_duration;
+	ros::Time scan_middle_time = scan_start_time + ros::Duration(scan_duration.toSec() / 2.0);
+	tf2::Transform point_transform;
+	bool transform_available = false;
 
 	// tfs setup
 	std::vector<tf2::Transform> collected_tfs;
-	if (!recovery_frame_.empty()) { // update recovery transform
-		double scan_middle_time = scan_start_time.toSec() + ((scan_end_time.toSec() - scan_start_time.toSec()) / 2.0);
-		tf_collector_.lookForTransform(recovery_to_target_frame_transform_, target_frame_, recovery_frame_, ros::Time(scan_middle_time), tf_lookup_timeout_);
+	if (interpolate_scans_) {
+		transform_available = tf_collector_.collectTFs(target_frame_, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs, tf_lookup_timeout_);
+	} else {
+		transform_available = tf_collector_.lookForTransform(point_transform, target_frame_, laser_scan->header.frame_id, scan_middle_time, tf_lookup_timeout_);
 	}
 
-	tf_collector_.collectTFs(target_frame_, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs, tf_lookup_timeout_);
-	if (collected_tfs.empty()) { // try to recover using [sensor_frame -> recovery_frame -> target_frame]
+	if (!transform_available) { // try to recover using [sensor_frame -> recovery_frame -> target_frame]
 		if (recovery_frame_.empty()) { return false; }
-		tf_collector_.collectTFs(recovery_frame_, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs, tf_lookup_timeout_);
-		if (collected_tfs.empty()) { return false; }
+
+		if (!recovery_frame_.empty()) {
+			tf_collector_.lookForTransform(recovery_to_target_frame_transform_, target_frame_, recovery_frame_, ros::Time(0), tf_lookup_timeout_);
+		}
+
+		if (interpolate_scans_) {
+			transform_available = tf_collector_.collectTFs(recovery_frame_, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs, tf_lookup_timeout_);
+		} else {
+			transform_available = tf_collector_.lookForTransform(point_transform, recovery_frame_, laser_scan->header.frame_id, scan_middle_time, tf_lookup_timeout_);
+		}
+
+		if (!transform_available) { return false; }
 
 		ROS_WARN_STREAM("Recovering from lack of tf between " << laser_scan->header.frame_id << " and " << target_frame_ << " using " << recovery_frame_ << " as recovery frame");
-		for (int i = 0; i < collected_tfs.size(); ++i) {
-			collected_tfs[i] = recovery_to_target_frame_transform_ * collected_tfs[i];
+		if (interpolate_scans_) {
+			for (int i = 0; i < collected_tfs.size(); ++i) {
+				collected_tfs[i] = recovery_to_target_frame_transform_ * collected_tfs[i];
+			}
+		} else {
+			point_transform = recovery_to_target_frame_transform_ * point_transform;
 		}
 	}
 	updatePolarToCartesianProjectionMatrix(laser_scan);
@@ -102,13 +119,13 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 	double max_range_cutoff = laser_scan->range_max * max_range_cutoff_percentage_offset_;
 	tf2Scalar one_scan_step_percentage = 1.0 / (double)number_of_scan_steps;
 	tf2Scalar current_scan_percentage = 0;
-	tf2::Transform point_transform;
-	if (collected_tfs.size() == 1) {
+
+	if (collected_tfs.size() == 1 && interpolate_scans_) {
 		point_transform = collected_tfs[0];
-	} else if (!interpolate_scans_) {
-		point_transform.getOrigin().setInterpolate3(collected_tfs[0].getOrigin(), collected_tfs[1].getOrigin(), 0.5);
-		point_transform.setRotation(tf2::slerp(collected_tfs[0].getRotation(), collected_tfs[1].getRotation(), 0.5));
-	}
+	}/* else if (collected_tfs.size() >= 2 && !interpolate_scans_) {
+		point_transform.getOrigin().setInterpolate3(collected_tfs.front().getOrigin(), collected_tfs.back().getOrigin(), 0.5);
+		point_transform.setRotation(tf2::slerp(collected_tfs.front().getRotation(), collected_tfs.back().getRotation(), 0.5));
+	}*/
 
 	// laser scan projection and transformation
 	setupPointCloudForNewLaserScan(laser_scan->ranges.size());  // virtual
@@ -119,9 +136,9 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 			tf2::Vector3 projected_point(point_range_value * polar_to_cartesian_matrix_(0, point_pos), point_range_value * polar_to_cartesian_matrix_(1, point_pos), 0);
 
 			// interpolate position and rotation
-			if (collected_tfs.size() == 2 && interpolate_scans_) {
-				point_transform.getOrigin().setInterpolate3(collected_tfs[0].getOrigin(), collected_tfs[1].getOrigin(), current_scan_percentage);
-				point_transform.setRotation(tf2::slerp(collected_tfs[0].getRotation(), collected_tfs[1].getRotation(), current_scan_percentage));
+			if (collected_tfs.size() >= 2 && interpolate_scans_) {
+				point_transform.getOrigin().setInterpolate3(collected_tfs.front().getOrigin(), collected_tfs.back().getOrigin(), current_scan_percentage);
+				point_transform.setRotation(tf2::slerp(collected_tfs.front().getRotation(), collected_tfs.back().getRotation(), current_scan_percentage));
 			}
 
 			// transform point to target frame of reference

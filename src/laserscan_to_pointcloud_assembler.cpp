@@ -152,7 +152,8 @@ void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserSc
 	timeout_for_cloud_assembly_reached_ = (ros::Time::now() - laserscan_to_pointcloud_.getPointcloud()->header.stamp) > timeout_for_cloud_assembly_;
 	number_of_scans_in_current_pointcloud = (int)laserscan_to_pointcloud_.getNumberOfScansAssembledInCurrentPointcloud();
 	if ((number_of_scans_in_current_pointcloud >= number_of_scans_to_assemble_per_cloud_ || timeout_for_cloud_assembly_reached_) && laserscan_to_pointcloud_.getNumberOfPointsInCloud() > 0) {
-		laserscan_to_pointcloud_.getPointcloud()->header.stamp = laser_scan->header.stamp;
+		ros::Duration scan_duration((laser_scan->ranges.size() - 1) * laser_scan->time_increment);
+		laserscan_to_pointcloud_.getPointcloud()->header.stamp = ros::Time(laser_scan->header.stamp) + scan_duration;
 		pointcloud_publisher_.publish(laserscan_to_pointcloud_.getPointcloud());
 
 		ROS_DEBUG_STREAM("Publishing cloud with " << (laserscan_to_pointcloud_.getPointcloud()->width * laserscan_to_pointcloud_.getPointcloud()->height) << " points assembled from " << number_of_scans_in_current_pointcloud << " LaserScans" \

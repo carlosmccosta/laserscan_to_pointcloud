@@ -25,7 +25,7 @@ TFCollector::~TFCollector() {}
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <TFCollector-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 bool TFCollector::collectTFs(const std::string& target_frame, const std::string& source_frame, const ros::Time& start_time, const ros::Time& endtime, size_t number_tfs,
-        std::vector<tf2::Transform>& collected_tfs_out, const ros::Duration tf_timeout) {
+		std::vector<tf2::Transform>& collected_tfs_out, const ros::Duration tf_timeout) {
 	collected_tfs_out.clear();
 
 	ros::Time current_tf_time = start_time;
@@ -39,6 +39,23 @@ bool TFCollector::collectTFs(const std::string& target_frame, const std::string&
 	}
 
 	return !collected_tfs_out.empty();
+}
+
+
+bool TFCollector::lookForLatestTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const std::string& source_frame, const ros::Duration timeout) {
+	ros::Time start_time = ros::Time::now();
+	ros::Time end_time = start_time + timeout;
+	ros::Duration wait_duration(0.005);
+	ros::Duration lookup_timeout(0.01);
+
+	while (ros::Time::now() < end_time) {
+		if (lookForTransform(tf2_transformOut, target_frame, source_frame, ros::Time::now(), lookup_timeout)) {
+			return true;
+		}
+		wait_duration.sleep();
+	}
+
+	return false;
 }
 
 
