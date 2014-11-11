@@ -106,13 +106,14 @@ void LaserScanToPointcloudAssembler::setupRecoveryInitialPose() {
 	}
 
 	if (!recovery_frame_id.empty()) {
+		tf2::Quaternion recovery_to_target_frame_transform_q = recovery_to_target_frame_transform.getRotation().normalize();
 		ROS_INFO_STREAM("Setting assembler recovery initial pose [ x: " << recovery_to_target_frame_transform.getOrigin().getX()
 				<< " y: " << recovery_to_target_frame_transform.getOrigin().getY()
 				<< " z: " << recovery_to_target_frame_transform.getOrigin().getZ()
-				<< " | qx: " << recovery_to_target_frame_transform.getRotation().getX()
-				<< " qy: " << recovery_to_target_frame_transform.getRotation().getY()
-				<< " qz: " << recovery_to_target_frame_transform.getRotation().getZ()
-				<< " qw: " << recovery_to_target_frame_transform.getRotation().getW()
+				<< " | qx: " << recovery_to_target_frame_transform_q.getX()
+				<< " qy: " << recovery_to_target_frame_transform_q.getY()
+				<< " qz: " << recovery_to_target_frame_transform_q.getZ()
+				<< " qw: " << recovery_to_target_frame_transform_q.getW()
 				<< " ]");
 		laserscan_to_pointcloud_.setRecoveryFrame(recovery_frame_id, recovery_to_target_frame_transform);
 	}

@@ -105,7 +105,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 
 		ROS_WARN_STREAM("Recovering from lack of tf between " << laser_scan->header.frame_id << " and " << target_frame_ << " using " << recovery_frame_ << " as recovery frame");
 		if (interpolate_scans_) {
-			for (int i = 0; i < collected_tfs.size(); ++i) {
+			for (size_t i = 0; i < collected_tfs.size(); ++i) {
 				collected_tfs[i] = recovery_to_target_frame_transform_ * collected_tfs[i];
 			}
 		} else {
@@ -124,7 +124,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 		point_transform = collected_tfs[0];
 	}/* else if (collected_tfs.size() >= 2 && !interpolate_scans_) {
 		point_transform.getOrigin().setInterpolate3(collected_tfs.front().getOrigin(), collected_tfs.back().getOrigin(), 0.5);
-		point_transform.setRotation(tf2::slerp(collected_tfs.front().getRotation(), collected_tfs.back().getRotation(), 0.5));
+		point_transform.setRotation(tf2::slerp(collected_tfs.front().getRotation().normalize(), collected_tfs.back().getRotation().normalize(), 0.5));
 	}*/
 
 	// laser scan projection and transformation
@@ -138,7 +138,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 			// interpolate position and rotation
 			if (collected_tfs.size() >= 2 && interpolate_scans_) {
 				point_transform.getOrigin().setInterpolate3(collected_tfs.front().getOrigin(), collected_tfs.back().getOrigin(), current_scan_percentage);
-				point_transform.setRotation(tf2::slerp(collected_tfs.front().getRotation(), collected_tfs.back().getRotation(), current_scan_percentage));
+				point_transform.setRotation(tf2::slerp(collected_tfs.front().getRotation().normalize(), collected_tfs.back().getRotation().normalize(), current_scan_percentage));
 			}
 
 			// transform point to target frame of reference

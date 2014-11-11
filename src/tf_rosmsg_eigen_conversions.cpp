@@ -22,7 +22,7 @@ void transformMsgToTF2(const geometry_msgs::Transform& msg, tf2::Transform& tf2)
 }
 
 void transformTF2ToMsg(const tf2::Transform& tf2, geometry_msgs::Transform& msg) {
-	tf2::Quaternion rotation = tf2.getRotation();
+	tf2::Quaternion rotation = tf2.getRotation().normalize();
 	msg.rotation.x = rotation.x();
 	msg.rotation.y = rotation.y();
 	msg.rotation.z = rotation.z();
@@ -39,7 +39,7 @@ void transformMsgToTF2(const geometry_msgs::Pose& msg, tf2::Transform& tf2) {
 
 void transformTF2ToMsg(const tf2::Transform& tf2, geometry_msgs::Pose& msg) {
 	transformTF2ToMsg(tf2.getOrigin(), msg.position);
-	tf2::Quaternion rotation = tf2.getRotation();
+	tf2::Quaternion rotation = tf2.getRotation().normalize();
 	msg.orientation.x = rotation.getX();
 	msg.orientation.y = rotation.getY();
 	msg.orientation.z = rotation.getZ();
@@ -52,9 +52,11 @@ void transformMsgToTF2(const geometry_msgs::Quaternion& msg, tf2::Quaternion& tf
 	tf2.setY(msg.y);
 	tf2.setZ(msg.z);
 	tf2.setW(msg.w);
+	tf2.normalize();
 }
 
 void transformTF2ToMsg(const tf2::Quaternion& tf2, geometry_msgs::Quaternion& msg) {
+	tf2::Quaternion tf2_n = tf2.normalized();
 	msg.x = tf2.getX();
 	msg.y = tf2.getY();
 	msg.z = tf2.getX();
