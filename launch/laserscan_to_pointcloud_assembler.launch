@@ -17,7 +17,7 @@
 	<arg name="recovery_to_target_frame_transform_initial_yaw" default="0.0" />
 
 	<!-- LaserScan assembler -->
-	<node pkg="laserscan_to_pointcloud" type="laserscan_to_pointcloud_assembler" name="laserscan_to_pointcloud_assembler" output="screen">
+	<node pkg="laserscan_to_pointcloud" type="laserscan_to_pointcloud_assembler" name="laserscan_to_pointcloud_assembler" respawn="true" output="screen">
 		<param name="laser_scan_topics" type="str" value="$(arg laser_scan_topics)" />
 		<param name="pointcloud_publish_topic" type="str" value="ambient_pointcloud" />
 		<param name="number_of_scans_to_assemble_per_cloud" type="int" value="$(arg number_of_scans_to_assemble_per_cloud)" />
