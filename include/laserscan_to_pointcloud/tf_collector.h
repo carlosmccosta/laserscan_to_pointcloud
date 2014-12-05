@@ -34,7 +34,13 @@
 namespace laserscan_to_pointcloud {
 // ##############################################################################   tf_collector   #############################################################################
 /**
- * \brief Description...
+ * \brief Class that can retrieve or collect matrix transformation between coordinate frames.
+ *
+ * Frame names:
+ *  - Source frame is the frame name in which the sensor data was measured
+ *  - Target frame is the frame name into which the sensor data will be transformed and is the origin of the coordinate system
+ * As such, the matrix retrieved with [ source_frame -> target_frame ] has the reference coordinate frame in the target frame
+ * and in the tf tree is equivalent to the concatenation of matrixes between [ target_frame -> source_frame ] (following the tree arrows and inverting the matrixes if the arrows are backwards)
  */
 class TFCollector {
 	// ========================================================================   <public-section>   ===========================================================================

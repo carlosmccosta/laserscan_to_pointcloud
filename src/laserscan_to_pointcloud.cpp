@@ -88,12 +88,11 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 		transform_available = tf_collector_.lookForTransform(point_transform, target_frame_, laser_scan->header.frame_id, scan_middle_time, tf_lookup_timeout_);
 	}
 
-	if (!transform_available) { // try to recover using [sensor_frame -> recovery_frame -> target_frame]
+	if (!transform_available) { // try to recover using [ sensor_frame -> recovery_frame -> target_frame ]
 		if (recovery_frame_.empty()) { return false; }
 
-		if (!recovery_frame_.empty()) {
-			tf_collector_.lookForTransform(recovery_to_target_frame_transform_, target_frame_, recovery_frame_, ros::Time(0), tf_lookup_timeout_);
-		}
+		// try to update the recovery tf (if fails, uses the last one)
+		tf_collector_.lookForTransform(recovery_to_target_frame_transform_, target_frame_, recovery_frame_, scan_middle_time, tf_lookup_timeout_);
 
 		if (interpolate_scans_) {
 			transform_available = tf_collector_.collectTFs(recovery_frame_, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs, tf_lookup_timeout_);
