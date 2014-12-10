@@ -10,6 +10,7 @@ set(${PROJECT_NAME}_CATKIN_COMPONENTS
     roscpp
     sensor_msgs
     geometry_msgs
+    nav_msgs
     tf2
     tf2_ros
     rosconsole

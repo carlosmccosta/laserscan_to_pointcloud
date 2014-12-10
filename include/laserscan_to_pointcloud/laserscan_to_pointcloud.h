@@ -70,6 +70,7 @@ class LaserScanToPointcloud {
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <gets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		inline const std::string& getTargetFrame() const { return target_frame_; }
+		inline const std::string& getRecoveryFrame() const { return recovery_frame_; }
 		inline double getMaxRangeCutoffPercentageOffset() const { return max_range_cutoff_percentage_offset_;}
 		inline double getMinRangeCutoffPercentageOffset() const { return min_range_cutoff_percentage_offset_; }
 
@@ -77,12 +78,12 @@ class LaserScanToPointcloud {
 		inline size_t getNumberOfPointsInCloud() const { return number_of_points_in_cloud_; }
 		inline size_t getNumberOfScansAssembledInCurrentPointcloud() const { return number_of_scans_assembled_in_current_pointcloud_; }
 		inline bool isInterpolateScans() const { return interpolate_scans_; }
-		void setRecoveryFrame(const std::string& recovery_frame, const tf2::Transform& recovery_to_target_frame_transform = tf2::Transform::getIdentity());
 		inline ros::Duration getTfLookupTimeout() const { return tf_lookup_timeout_; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </gets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		inline void setTargetFrame(const std::string& target_frame) { target_frame_ = target_frame; }
+		void setRecoveryFrame(const std::string& recovery_frame, const tf2::Transform& recovery_to_target_frame_transform = tf2::Transform::getIdentity());
 		inline void setMaxRangeCutoffPercentageOffset(double max_range_cutoff_percentage_offset) { max_range_cutoff_percentage_offset_ = max_range_cutoff_percentage_offset; }
 		inline void setMinRangeCutoffPercentageOffset(double min_range_cutoff_percentage_offset) { min_range_cutoff_percentage_offset_ = min_range_cutoff_percentage_offset; }
 		inline void incrementNumberOfPointCloudsCreated() { ++number_of_pointclouds_created_; }

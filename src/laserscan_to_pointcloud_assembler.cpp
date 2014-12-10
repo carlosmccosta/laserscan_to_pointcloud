@@ -17,7 +17,7 @@ namespace laserscan_to_pointcloud {
 // =============================================================================  <public-section>   ===========================================================================
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePtr& node_handle, ros::NodeHandlePtr& private_node_handle) :
-		number_droped_laserscans_(0), timeout_for_cloud_assembly_reached_(false),
+		number_droped_laserscans_(0), timeout_for_cloud_assembly_reached_(false), imu_last_message_stamp_(0),
 		node_handle_(node_handle), private_node_handle_(private_node_handle) {
 
 	double timeout_for_cloud_assembly = 5.0;
@@ -26,6 +26,33 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 	private_node_handle_->param("number_of_scans_to_assemble_per_cloud", number_of_scans_to_assemble_per_cloud_, 10);
 	private_node_handle_->param("timeout_for_cloud_assembly", timeout_for_cloud_assembly, 1.0);
 	timeout_for_cloud_assembly_.fromSec(timeout_for_cloud_assembly);
+
+	std::string dynamic_update_of_assembly_configuration_from_twist_topic, dynamic_update_of_assembly_configuration_from_odometry_topic, dynamic_update_of_assembly_configuration_from_imu_topic;
+	private_node_handle_->param("dynamic_update_of_assembly_configuration_from_twist_topic", dynamic_update_of_assembly_configuration_from_twist_topic, std::string(""));
+	private_node_handle_->param("dynamic_update_of_assembly_configuration_from_odometry_topic", dynamic_update_of_assembly_configuration_from_odometry_topic, std::string("odom"));
+	private_node_handle_->param("dynamic_update_of_assembly_configuration_from_imu_topic", dynamic_update_of_assembly_configuration_from_imu_topic, std::string(""));
+
+	if (!dynamic_update_of_assembly_configuration_from_twist_topic.empty()) {
+		ROS_INFO_STREAM("Updating laser assembly configurations from twist topic [" << dynamic_update_of_assembly_configuration_from_twist_topic << "]");
+		twist_subscriber_ = node_handle_->subscribe(dynamic_update_of_assembly_configuration_from_twist_topic, 5, &laserscan_to_pointcloud::LaserScanToPointcloudAssembler::adjustAssemblyConfigurationFromTwist, this);
+	}
+
+	if (!dynamic_update_of_assembly_configuration_from_odometry_topic.empty()) {
+		ROS_INFO_STREAM("Updating laser assembly configurations from odometry topic [" << dynamic_update_of_assembly_configuration_from_odometry_topic << "]");
+		odometry_subscriber_ = node_handle_->subscribe(dynamic_update_of_assembly_configuration_from_odometry_topic, 5, &laserscan_to_pointcloud::LaserScanToPointcloudAssembler::adjustAssemblyConfigurationFromOdometry, this);
+	}
+
+	if (!dynamic_update_of_assembly_configuration_from_imu_topic.empty()) {
+		ROS_INFO_STREAM("Updating laser assembly configurations from imu topic [" << dynamic_update_of_assembly_configuration_from_imu_topic << "]");
+		imu_subscriber_ = node_handle_->subscribe(dynamic_update_of_assembly_configuration_from_imu_topic, 5, &laserscan_to_pointcloud::LaserScanToPointcloudAssembler::adjustAssemblyConfigurationFromIMU, this);
+	}
+
+	private_node_handle_->param("min_number_of_scans_to_assemble_per_cloud", min_number_of_scans_to_assemble_per_cloud_, 2);
+	private_node_handle_->param("max_number_of_scans_to_assemble_per_cloud", max_number_of_scans_to_assemble_per_cloud_, 10);
+	private_node_handle_->param("min_timeout_seconds_for_cloud_assembly", min_timeout_seconds_for_cloud_assembly_, 0.3);
+	private_node_handle_->param("max_timeout_seconds_for_cloud_assembly", max_timeout_seconds_for_cloud_assembly_, 1.3);
+	private_node_handle_->param("max_linear_velocity", max_linear_velocity_, 0.5);
+	private_node_handle_->param("max_angular_velocity", max_angular_velocity_, 0.174532925);
 
 	std::string target_frame_id;
 	double number;
@@ -38,7 +65,8 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 	laserscan_to_pointcloud_.setMinRangeCutoffPercentageOffset(number);
 	private_node_handle_->param("max_range_cutoff_percentage_offset", number, 0.95);
 	laserscan_to_pointcloud_.setMaxRangeCutoffPercentageOffset(number);
-	private_node_handle_->param("interpolate_scans", boolean, true);
+	private_node_handle_->param("use_spherical_interpolation", boolean, true);
+	laserscan_to_pointcloud_.setInterpolateScans(boolean);
 	private_node_handle_->param("tf_lookup_timeout", number, 0.15);
 	laserscan_to_pointcloud_.setTFLookupTimeout(number);
 
@@ -163,17 +191,64 @@ void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserSc
 }
 
 
+void LaserScanToPointcloudAssembler::adjustAssemblyConfiguration(const geometry_msgs::Vector3& linear_velocity, const geometry_msgs::Vector3& angular_velocity) {
+	double inverse_linear_velocity = max_linear_velocity_ - std::min(std::sqrt(linear_velocity.x * linear_velocity.x + linear_velocity.y * linear_velocity.y + linear_velocity.z * linear_velocity.z), max_linear_velocity_);
+	double inverse_angular_velocity = max_angular_velocity_ - std::min(std::sqrt(angular_velocity.x * angular_velocity.x + angular_velocity.y * angular_velocity.y + angular_velocity.z * angular_velocity.z), max_angular_velocity_);
+
+	double linear_velocity_to_number_scans_ratio = (max_number_of_scans_to_assemble_per_cloud_ - min_number_of_scans_to_assemble_per_cloud_) / max_linear_velocity_;
+	double angular_velocity_to_number_scans_ratio = (max_number_of_scans_to_assemble_per_cloud_ - min_number_of_scans_to_assemble_per_cloud_) / max_angular_velocity_;
+	double number_scans_linear_velocity = min_number_of_scans_to_assemble_per_cloud_ + linear_velocity_to_number_scans_ratio * inverse_linear_velocity;
+	double number_scans_angular_velocity = min_number_of_scans_to_assemble_per_cloud_ + angular_velocity_to_number_scans_ratio * inverse_angular_velocity;
+	number_of_scans_to_assemble_per_cloud_ = std::ceil(std::min(number_scans_linear_velocity, number_scans_angular_velocity));
+
+	double linear_velocity_to_timeout_ratio = (max_timeout_seconds_for_cloud_assembly_ - min_timeout_seconds_for_cloud_assembly_) / max_linear_velocity_;
+	double angular_velocity_to_timeout_ratio = (max_timeout_seconds_for_cloud_assembly_ - min_timeout_seconds_for_cloud_assembly_) / max_angular_velocity_;
+	double timeout_linear_velocity = min_timeout_seconds_for_cloud_assembly_ + linear_velocity_to_timeout_ratio * inverse_linear_velocity;
+	double timeout_angular_velocity = min_timeout_seconds_for_cloud_assembly_ + angular_velocity_to_timeout_ratio * inverse_angular_velocity;
+	double timeout = std::min(timeout_linear_velocity, timeout_angular_velocity);
+	timeout_for_cloud_assembly_.fromSec(timeout);
+
+	ROS_DEBUG_STREAM_THROTTLE(0.1, "Laser scan assembly configuration: [ number_of_scans_to_assemble_per_cloud: " << number_of_scans_to_assemble_per_cloud_ << " ] | [ timeout_for_cloud_assembly: " << timeout_for_cloud_assembly_ << " ]");
+}
+
+
+void LaserScanToPointcloudAssembler::adjustAssemblyConfigurationFromTwist(const geometry_msgs::TwistConstPtr& twist) {
+	adjustAssemblyConfiguration(twist->linear, twist->angular);
+}
+
+
+void LaserScanToPointcloudAssembler::adjustAssemblyConfigurationFromOdometry(const nav_msgs::OdometryConstPtr& odometry) {
+	adjustAssemblyConfiguration(odometry->twist.twist.linear, odometry->twist.twist.angular);
+}
+
+
+void LaserScanToPointcloudAssembler::adjustAssemblyConfigurationFromIMU(const sensor_msgs::ImuConstPtr& imu) {
+	if (imu_last_message_stamp_.toSec() > 0.1) {
+		double imu_dt = imu->header.stamp.toSec() - imu_last_message_stamp_.toSec();
+		if (imu_dt > 0) {
+			imu_linear_velocity.x += imu->linear_acceleration.x * imu_dt;
+			imu_linear_velocity.y += imu->linear_acceleration.y * imu_dt;
+			imu_linear_velocity.z += imu->linear_acceleration.z * imu_dt;
+			adjustAssemblyConfiguration(imu_linear_velocity, imu->angular_velocity);
+		}
+	}
+
+	imu_last_message_stamp_ = imu->header.stamp;
+}
+
+
 void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_pointcloud::LaserScanToPointcloudAssemblerConfig& config, uint32_t level) {
 	if (level == 1) {
 		ROS_INFO_STREAM("LaserScanToPointcloudAssembler dynamic reconfigure (level=" << level << ") -> " \
-				<< "\n\t[laser_scan_topics]: " 						<< laser_scan_topics_ 						<< " -> " << config.laser_scan_topics \
-				<< "\n\t[pointcloud_publish_topic]: " 				<< pointcloud_publish_topic_				<< " -> " << config.pointcloud_publish_topic \
-				<< "\n\t[number_of_scans_to_assemble_per_cloud]: "	<< number_of_scans_to_assemble_per_cloud_ 	<< " -> " << config.number_of_scans_to_assemble_per_cloud \
-				<< "\n\t[timeout_for_cloud_assembly]: "				<< timeout_for_cloud_assembly_.toSec() 		<< " -> " << config.timeout_for_cloud_assembly \
-				<< "\n\t[target_frame]: " 							<< laserscan_to_pointcloud_.getTargetFrame() << " -> " << config.target_frame \
+				<< "\n\t[laser_scan_topics]: " 						<< laser_scan_topics_ 							<< " -> " << config.laser_scan_topics \
+				<< "\n\t[pointcloud_publish_topic]: " 				<< pointcloud_publish_topic_					<< " -> " << config.pointcloud_publish_topic \
+				<< "\n\t[number_of_scans_to_assemble_per_cloud]: "	<< number_of_scans_to_assemble_per_cloud_ 		<< " -> " << config.number_of_scans_to_assemble_per_cloud \
+				<< "\n\t[timeout_for_cloud_assembly]: "				<< timeout_for_cloud_assembly_.toSec() 			<< " -> " << config.timeout_for_cloud_assembly \
+				<< "\n\t[target_frame]: " 							<< laserscan_to_pointcloud_.getTargetFrame() 	<< " -> " << config.target_frame \
+				<< "\n\t[recovery_frame]: " 						<< laserscan_to_pointcloud_.getRecoveryFrame() 	<< " -> " << config.recovery_frame \
 				<< "\n\t[min_range_cutoff_percentage_offset]: " 	<< laserscan_to_pointcloud_.getMinRangeCutoffPercentageOffset() << " -> " << config.min_range_cutoff_percentage_offset \
 				<< "\n\t[max_range_cutoff_percentage_offset]: " 	<< laserscan_to_pointcloud_.getMaxRangeCutoffPercentageOffset()	<< " -> " << config.max_range_cutoff_percentage_offset \
-				<< "\n\t[include_laser_intensity]: " 				<< include_laser_intensity_					<< " -> " << (config.include_laser_intensity ? "True" : "False") \
+				<< "\n\t[include_laser_intensity]: " 				<< include_laser_intensity_						<< " -> " << (config.include_laser_intensity ? "True" : "False") \
 				<< "\n\t[interpolate_scans]: " 						<< laserscan_to_pointcloud_.isInterpolateScans() << " -> " << (config.interpolate_scans ? "True" : "False"));
 
 		if (!config.laser_scan_topics.empty() && laser_scan_topics_ != config.laser_scan_topics) {
@@ -214,4 +289,3 @@ void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_poi
 
 
 } /* namespace laserscan_to_pointcloud */
-
