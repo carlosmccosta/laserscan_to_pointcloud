@@ -54,5 +54,12 @@ void transformTF2ToMsg(const tf2::Vector3& tf2, geometry_msgs::Point& msg);
 void transformMatrixToTF2(const Eigen::Matrix4f& matrix, tf2::Transform& tf2);
 void transformMatrixToMsg(const Eigen::Matrix4f& matrix, geometry_msgs::Pose& msg);
 
+template <typename Scalar>
+Eigen::Transform<Scalar, 3, Eigen::Affine> transformTF2ToTransform(const tf2::Transform& tf2) {
+	Eigen::Translation<Scalar, 3> translation(tf2.getOrigin().getX(), tf2.getOrigin().getY(), tf2.getOrigin().getZ());
+	Eigen::Quaternion<Scalar> rotation(tf2.getRotation().getW(), tf2.getRotation().getX(), tf2.getRotation().getY(), tf2.getRotation().getZ());
+	return Eigen::Transform<Scalar, 3, Eigen::Affine>(translation * rotation);
+}
+
 } /* namespace tf_rosmsg_eigen_conversions */
 } /* namespace laserscan_to_pointcloud */
