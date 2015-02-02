@@ -19,6 +19,8 @@
 	
 	<arg name="target_frame" default="map" />
 	<arg name="use_spherical_interpolation" default="true" />
+	<arg name="min_range_cutoff_percentage_offset" default="2.00" />
+	<arg name="max_range_cutoff_percentage_offset" default="0.95" />
 	<arg name="tf_lookup_timeout" default="0.15" />
 	<arg name="recovery_frame" default="odom" />
 	<arg name="initial_recovery_transform_in_base_link_to_target" default="false" /> <!-- if false -> transform assumed to be recovery_link -> target -->
@@ -46,8 +48,8 @@
 		<param name="max_linear_velocity" type="double" value="$(arg max_linear_velocity)" />
 		<param name="max_angular_velocity" type="double" value="$(arg max_angular_velocity)" />
 		<param name="target_frame" type="str" value="$(arg target_frame)" />
-		<param name="min_range_cutoff_percentage_offset" type="double" value="2.00" />
-		<param name="max_range_cutoff_percentage_offset" type="double" value="0.95" />
+		<param name="min_range_cutoff_percentage_offset" type="double" value="$(arg min_range_cutoff_percentage_offset)" />
+		<param name="max_range_cutoff_percentage_offset" type="double" value="$(arg max_range_cutoff_percentage_offset)" />
 		<param name="include_laser_intensity" type="bool" value="false" />
 		<param name="use_spherical_interpolation" type="bool" value="$(arg use_spherical_interpolation)" />
 		<param name="tf_lookup_timeout" type="double" value="$(arg tf_lookup_timeout)" />
