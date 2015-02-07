@@ -21,6 +21,7 @@
 #include <tf2_ros/transform_listener.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <tf2/LinearMath/Vector3.h>
+#include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Transform.h>
 
 // external libs includes
@@ -62,16 +63,19 @@ class TFCollector {
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <TFCollector-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		bool collectTFs(const std::string& target_frame, const std::string& source_frame, const ros::Time& start_time, const ros::Time& endtime, size_t number_tfs,
-				std::vector<tf2::Transform>& collected_tfs_out, const ros::Duration tf_timeout = ros::Duration(0.2));
+				std::vector<tf2::Transform>& collected_tfs_out, const ros::Duration& tf_timeout = ros::Duration(0.2));
 
-		bool lookForLatestTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const std::string& source_frame, const ros::Duration timeout = ros::Duration(10));
+		bool lookForLatestTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const std::string& source_frame, const ros::Duration& timeout = ros::Duration(10));
 
-		bool lookForTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const std::string& source_frame, const ros::Time& time,
-				const ros::Duration timeout = ros::Duration(0.2));
+		bool lookForTransform(tf2::Vector3& translation_out, tf2::Quaternion& rotation_out, const std::string& target_frame, const std::string& source_frame, const ros::Time& time,
+						const ros::Duration& timeout = ros::Duration(0.2));
 
-		bool lookForTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const ros::Time& target_time,
+		bool lookForTransform(tf2::Transform& tf2_transform_out, const std::string& target_frame, const std::string& source_frame, const ros::Time& time,
+				const ros::Duration& timeout = ros::Duration(0.2));
+
+		bool lookForTransform(tf2::Transform& tf2_transform_out, const std::string& target_frame, const ros::Time& target_time,
 				const std::string& source_frame, const ros::Time& source_time,
-				const std::string& fixed_frame, const ros::Duration timeout = ros::Duration(0.2));
+				const std::string& fixed_frame, const ros::Duration& timeout = ros::Duration(0.2));
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </TFCollector-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 

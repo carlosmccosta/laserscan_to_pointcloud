@@ -52,7 +52,7 @@ class LaserScanToPointcloud {
 
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		LaserScanToPointcloud(std::string target_frame = "", double min_range_cutoff_percentage = 1.05, double max_range_cutoff_percentage = 0.95, bool interpolate_scans = false, double tf_lookup_timeout = 0.2);
+		LaserScanToPointcloud(std::string target_frame = "", double min_range_cutoff_percentage = 1.05, double max_range_cutoff_percentage = 0.95, int number_of_tf_queries_for_spherical_interpolation = 4, double tf_lookup_timeout = 0.2);
 		virtual ~LaserScanToPointcloud();
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </constructors-destructor>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -66,6 +66,8 @@ class LaserScanToPointcloud {
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		bool updatePolarToCartesianProjectionMatrix(const sensor_msgs::LaserScanConstPtr& laser_scan);
 		bool integrateLaserScanWithShpericalLinearInterpolation(const sensor_msgs::LaserScanConstPtr& laser_scan);
+		bool lookForTransformWithRecovery(tf2::Vector3& translation_out, tf2::Quaternion& rotation_out, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout = ros::Duration(0.2));
+		bool lookForTransformWithRecovery(tf2::Transform& point_transform_out, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout = ros::Duration(0.2));
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToPointcloud-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <gets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -77,8 +79,8 @@ class LaserScanToPointcloud {
 		inline size_t getNumberOfPointcloudsCreated() const { return number_of_pointclouds_created_; }
 		inline size_t getNumberOfPointsInCloud() const { return number_of_points_in_cloud_; }
 		inline size_t getNumberOfScansAssembledInCurrentPointcloud() const { return number_of_scans_assembled_in_current_pointcloud_; }
-		inline bool isInterpolateScans() const { return interpolate_scans_; }
 		inline ros::Duration getTfLookupTimeout() const { return tf_lookup_timeout_; }
+		inline int getNumberOfTfQueriesForSphericalInterpolation() const { return number_of_tf_queries_for_spherical_interpolation_; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </gets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -89,9 +91,9 @@ class LaserScanToPointcloud {
 		inline void incrementNumberOfPointCloudsCreated() { ++number_of_pointclouds_created_; }
 		inline void resetNumberOfPointsInCloud() { number_of_points_in_cloud_ = 0; }
 		inline void resetNumberOfScansAsembledInCurrentCloud() { number_of_scans_assembled_in_current_pointcloud_ = 0; }
-		inline void setInterpolateScans(bool interpolate_scans) { interpolate_scans_ = interpolate_scans; }
 		inline void setTFLookupTimeout(double tf_lookup_timeout) { tf_lookup_timeout_.fromSec(tf_lookup_timeout); }
 		inline TFCollector& getTfCollector() { return tf_collector_; }
+		void setNumberOfTfQueriesForSphericalInterpolation(int number_of_tf_queries_for_spherical_interpolation) { number_of_tf_queries_for_spherical_interpolation_ = number_of_tf_queries_for_spherical_interpolation; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </sets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	// ========================================================================   </public-section>   ==========================================================================
 
@@ -108,7 +110,7 @@ class LaserScanToPointcloud {
 		tf2::Transform recovery_to_target_frame_transform_;
 		double min_range_cutoff_percentage_offset_;
 		double max_range_cutoff_percentage_offset_;
-		bool interpolate_scans_;
+		int number_of_tf_queries_for_spherical_interpolation_;
 		ros::Duration tf_lookup_timeout_;
 
 		// state fields

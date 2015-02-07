@@ -14,11 +14,16 @@
 	<arg name="max_number_of_scans_to_assemble_per_cloud" default="10" />
 	<arg name="min_timeout_seconds_for_cloud_assembly" default="0.3" />
 	<arg name="max_timeout_seconds_for_cloud_assembly" default="1.3" />
-	<arg name="max_linear_velocity" default="0.025" /> <!-- when the linear velocity of the robot is equal or greater than this value, the number of scans to join and assembly timeout will be set to their minimum values specified above -->
-	<arg name="max_angular_velocity" default="0.174532925" /> <!-- when the angular velocity of the robot is equal or greater than this value, the number of scans to join and assembly timeout will be set to their minimum values specified above -->
+	<arg name="max_linear_velocity" default="0.035" /> <!-- when the linear velocity of the robot is equal or greater than this value, the number of scans to join and assembly timeout will be set to their minimum values specified above -->
+	<arg name="max_angular_velocity" default="0.1" /> <!-- when the angular velocity of the robot is equal or greater than this value, the number of scans to join and assembly timeout will be set to their minimum values specified above -->
 	
 	<arg name="target_frame" default="map" />
-	<arg name="use_spherical_interpolation" default="true" />
+	
+	<!-- Number of tfs used to performed laser spherical interpolation (if < 2 no interpolation is done and the tf in the middle of the scan time is used) -->
+	<!-- Spherical interpolation requires odometry / imu or any other source of movement estimation to be within the [source -> target] tf chain (otherwise it will not improve laser projection) -->
+	<!-- The number of tf queries shouldn't be larger than the number of TF messages of movement estimation that will be published between the first and last laser measurement (for efficiency reasons) -->
+	<arg name="number_of_tf_queries_for_spherical_interpolation" default="4" />
+	
 	<arg name="min_range_cutoff_percentage_offset" default="2.00" />
 	<arg name="max_range_cutoff_percentage_offset" default="0.95" />
 	<arg name="tf_lookup_timeout" default="0.15" />
@@ -33,7 +38,7 @@
 	<arg name="recovery_to_target_frame_transform_initial_yaw" default="0.0" />
 
 	<!-- LaserScan assembler -->
-	<node pkg="laserscan_to_pointcloud" type="laserscan_to_pointcloud_assembler" name="laserscan_to_pointcloud_assembler" respawn="true" output="screen">
+	<node pkg="laserscan_to_pointcloud" type="laserscan_to_pointcloud_assembler" name="$(anon laserscan_to_pointcloud_assembler)" respawn="true" output="screen">
 		<param name="laser_scan_topics" type="str" value="$(arg laser_scan_topics)" />
 		<param name="pointcloud_publish_topic" type="str" value="$(arg pointcloud_publish_topic)" />
 		<param name="number_of_scans_to_assemble_per_cloud" type="int" value="$(arg number_of_scans_to_assemble_per_cloud)" />
@@ -51,7 +56,7 @@
 		<param name="min_range_cutoff_percentage_offset" type="double" value="$(arg min_range_cutoff_percentage_offset)" />
 		<param name="max_range_cutoff_percentage_offset" type="double" value="$(arg max_range_cutoff_percentage_offset)" />
 		<param name="include_laser_intensity" type="bool" value="false" />
-		<param name="use_spherical_interpolation" type="bool" value="$(arg use_spherical_interpolation)" />
+		<param name="number_of_tf_queries_for_spherical_interpolation" type="int" value="$(arg number_of_tf_queries_for_spherical_interpolation)" />
 		<param name="tf_lookup_timeout" type="double" value="$(arg tf_lookup_timeout)" />
 		<param name="recovery_frame" type="str" value="$(arg recovery_frame)" />
 		<param name="initial_recovery_transform_in_base_link_to_target" type="bool" value="$(arg initial_recovery_transform_in_base_link_to_target)" />

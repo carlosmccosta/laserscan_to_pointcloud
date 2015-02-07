@@ -65,8 +65,12 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 	laserscan_to_pointcloud_.setMinRangeCutoffPercentageOffset(number);
 	private_node_handle_->param("max_range_cutoff_percentage_offset", number, 0.95);
 	laserscan_to_pointcloud_.setMaxRangeCutoffPercentageOffset(number);
-	private_node_handle_->param("use_spherical_interpolation", boolean, true);
-	laserscan_to_pointcloud_.setInterpolateScans(boolean);
+
+	int integer;
+	private_node_handle_->param("number_of_tf_queries_for_spherical_interpolation", integer, 4);
+	if (integer > 1) { ROS_INFO_STREAM("Laser assembler is using " << integer << " TFs inside laser scan time to perform spherical interpolation"); }
+
+	laserscan_to_pointcloud_.setNumberOfTfQueriesForSphericalInterpolation(integer);
 	private_node_handle_->param("tf_lookup_timeout", number, 0.15);
 	laserscan_to_pointcloud_.setTFLookupTimeout(number);
 
@@ -249,7 +253,7 @@ void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_poi
 				<< "\n\t[min_range_cutoff_percentage_offset]: " 	<< laserscan_to_pointcloud_.getMinRangeCutoffPercentageOffset() << " -> " << config.min_range_cutoff_percentage_offset \
 				<< "\n\t[max_range_cutoff_percentage_offset]: " 	<< laserscan_to_pointcloud_.getMaxRangeCutoffPercentageOffset()	<< " -> " << config.max_range_cutoff_percentage_offset \
 				<< "\n\t[include_laser_intensity]: " 				<< include_laser_intensity_						<< " -> " << (config.include_laser_intensity ? "True" : "False") \
-				<< "\n\t[interpolate_scans]: " 						<< laserscan_to_pointcloud_.isInterpolateScans() << " -> " << (config.interpolate_scans ? "True" : "False"));
+				<< "\n\t[interpolate_scans]: " 						<< laserscan_to_pointcloud_.getNumberOfTfQueriesForSphericalInterpolation() << " -> " << config.number_of_tf_queries_for_spherical_interpolation);
 
 		if (!config.laser_scan_topics.empty() && laser_scan_topics_ != config.laser_scan_topics) {
 			laser_scan_topics_ = config.laser_scan_topics;
@@ -273,7 +277,7 @@ void LaserScanToPointcloudAssembler::dynamicReconfigureCallback(laserscan_to_poi
 		laserscan_to_pointcloud_.setTargetFrame(config.target_frame);
 		laserscan_to_pointcloud_.setMinRangeCutoffPercentageOffset(config.min_range_cutoff_percentage_offset);
 		laserscan_to_pointcloud_.setMaxRangeCutoffPercentageOffset(config.max_range_cutoff_percentage_offset);
-		laserscan_to_pointcloud_.setInterpolateScans(config.interpolate_scans);
+		laserscan_to_pointcloud_.setNumberOfTfQueriesForSphericalInterpolation(config.number_of_tf_queries_for_spherical_interpolation);
 		laserscan_to_pointcloud_.setRecoveryFrame(config.recovery_frame);
 	}
 }

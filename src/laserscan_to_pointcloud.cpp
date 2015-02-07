@@ -17,11 +17,11 @@
 namespace laserscan_to_pointcloud {
 // =============================================================================  <public-section>   ===========================================================================
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-LaserScanToPointcloud::LaserScanToPointcloud(std::string target_frame, double min_range_cutoff_percentage, double max_range_cutoff_percentage, bool interpolate_scans, double tf_lookup_timeout) :
+LaserScanToPointcloud::LaserScanToPointcloud(std::string target_frame, double min_range_cutoff_percentage, double max_range_cutoff_percentage, int number_of_tf_queries_for_spherical_interpolation, double tf_lookup_timeout) :
 		target_frame_(target_frame),
 		min_range_cutoff_percentage_offset_(min_range_cutoff_percentage), max_range_cutoff_percentage_offset_(max_range_cutoff_percentage),
 		tf_lookup_timeout_(tf_lookup_timeout),
-		interpolate_scans_(interpolate_scans),
+		number_of_tf_queries_for_spherical_interpolation_(number_of_tf_queries_for_spherical_interpolation),
 		number_of_pointclouds_created_(0),
 		number_of_points_in_cloud_(0),
 		number_of_scans_assembled_in_current_pointcloud_(0),
@@ -73,71 +73,63 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 	// laser info
 	size_t number_of_scan_points = laser_scan->ranges.size();
 	size_t number_of_scan_steps = number_of_scan_points - 1;
-	ros::Duration scan_duration(number_of_scan_steps * laser_scan->time_increment);
+	ros::Duration scan_duration((double)number_of_scan_steps * (double)laser_scan->time_increment);
 	ros::Time scan_start_time = laser_scan->header.stamp;
-	ros::Time scan_end_time = scan_start_time + scan_duration;
+//	ros::Time scan_end_time = scan_start_time + scan_duration;
 	ros::Time scan_middle_time = scan_start_time + ros::Duration(scan_duration.toSec() / 2.0);
-	tf2::Transform point_transform;
-	bool transform_available = false;
+
 
 	// tfs setup
-	std::vector<tf2::Transform> collected_tfs;
-	if (interpolate_scans_) {
-		transform_available = tf_collector_.collectTFs(target_frame_, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs, tf_lookup_timeout_);
-	} else {
-		transform_available = tf_collector_.lookForTransform(point_transform, target_frame_, laser_scan->header.frame_id, scan_middle_time, tf_lookup_timeout_);
-	}
+	ros::Time tf_query_time = number_of_tf_queries_for_spherical_interpolation_ < 1 ? scan_middle_time : scan_start_time;
+	tf2::Transform point_transform;
+	if (!lookForTransformWithRecovery(point_transform, target_frame_, laser_scan->header.frame_id, tf_query_time, tf_lookup_timeout_)) { return false; }
 
-	if (!transform_available) { // try to recover using [ sensor_frame -> recovery_frame -> target_frame ]
-		if (recovery_frame_.empty()) { return false; }
-
-		// try to update the recovery tf (if fails, uses the last one)
-		tf_collector_.lookForTransform(recovery_to_target_frame_transform_, target_frame_, recovery_frame_, scan_middle_time, tf_lookup_timeout_);
-
-		if (interpolate_scans_) {
-			transform_available = tf_collector_.collectTFs(recovery_frame_, laser_scan->header.frame_id, scan_start_time, scan_end_time, 2, collected_tfs, tf_lookup_timeout_);
-		} else {
-			transform_available = tf_collector_.lookForTransform(point_transform, recovery_frame_, laser_scan->header.frame_id, scan_middle_time, tf_lookup_timeout_);
-		}
-
-		if (!transform_available) { return false; }
-
-		ROS_WARN_STREAM("Recovering from lack of tf between " << laser_scan->header.frame_id << " and " << target_frame_ << " using " << recovery_frame_ << " as recovery frame");
-		if (interpolate_scans_) {
-			for (size_t i = 0; i < collected_tfs.size(); ++i) {
-				collected_tfs[i] = recovery_to_target_frame_transform_ * collected_tfs[i];
-			}
-		} else {
-			point_transform = recovery_to_target_frame_transform_ * point_transform;
-		}
-	}
-	updatePolarToCartesianProjectionMatrix(laser_scan);
 
 	// projection and transformation setup
+	updatePolarToCartesianProjectionMatrix(laser_scan);
 	double min_range_cutoff = laser_scan->range_min * min_range_cutoff_percentage_offset_;
 	double max_range_cutoff = laser_scan->range_max * max_range_cutoff_percentage_offset_;
-	tf2Scalar one_scan_step_percentage = 1.0 / (double)number_of_scan_steps;
-	tf2Scalar current_scan_percentage = 0;
 
-	if (collected_tfs.size() == 1 && interpolate_scans_) {
-		point_transform = collected_tfs[0];
-	}/* else if (collected_tfs.size() >= 2 && !interpolate_scans_) {
-		point_transform.getOrigin().setInterpolate3(collected_tfs.front().getOrigin(), collected_tfs.back().getOrigin(), 0.5);
-		point_transform.setRotation(tf2::slerp(collected_tfs.front().getRotation().normalize(), collected_tfs.back().getRotation().normalize(), 0.5));
-	}*/
+
+	// spherical interpolation setup
+	double laser_slice_time_increment_double = scan_duration.toSec() / (double)(number_of_tf_queries_for_spherical_interpolation_ - 1);
+	ros::Duration laser_slice_time_increment(laser_slice_time_increment_double);
+
+	ros::Time past_tf_time = scan_start_time;
+	tf2::Vector3 past_tf_translation = point_transform.getOrigin();
+	tf2::Quaternion past_tf_rotation = point_transform.getRotation();
+
+	size_t future_tf_number = 1;
+	ros::Time future_tf_time = past_tf_time + laser_slice_time_increment;
+	tf2::Vector3 future_tf_translation;
+	tf2::Quaternion future_tf_rotation;
+
+	bool future_tf_valid = false;
+	if (number_of_tf_queries_for_spherical_interpolation_ > 1) {
+		while (future_tf_number < number_of_tf_queries_for_spherical_interpolation_) {
+			future_tf_valid = lookForTransformWithRecovery(future_tf_translation, future_tf_rotation, target_frame_, laser_scan->header.frame_id, future_tf_time, tf_lookup_timeout_);
+			if (future_tf_valid) { break; } else { ++future_tf_number; future_tf_time += laser_slice_time_increment; }
+		}
+	}
+
 
 	// laser scan projection and transformation
 	setupPointCloudForNewLaserScan(laser_scan->ranges.size());  // virtual
-	for (size_t point_pos = 0; point_pos < number_of_scan_points; ++point_pos) {
-		float point_range_value = laser_scan->ranges[point_pos];
+	ros::Time current_point_time = scan_start_time;
+	ros::Duration laser_time_increment(laser_scan->time_increment);
+	tf2Scalar current_interpolation_ratio = 0.0;
+
+	for (size_t point_index = 0; point_index < number_of_scan_points; ++point_index) {
+		float point_range_value = laser_scan->ranges[point_index];
 		if (point_range_value > min_range_cutoff && point_range_value < max_range_cutoff) {
 			// project laser scan point in 2D (in the laser frame of reference)
-			tf2::Vector3 projected_point(point_range_value * polar_to_cartesian_matrix_(0, point_pos), point_range_value * polar_to_cartesian_matrix_(1, point_pos), 0);
+			tf2::Vector3 projected_point(point_range_value * polar_to_cartesian_matrix_(0, point_index), point_range_value * polar_to_cartesian_matrix_(1, point_index), 0);
 
 			// interpolate position and rotation
-			if (collected_tfs.size() >= 2 && interpolate_scans_) {
-				point_transform.getOrigin().setInterpolate3(collected_tfs.front().getOrigin(), collected_tfs.back().getOrigin(), current_scan_percentage);
-				point_transform.setRotation(tf2::slerp(collected_tfs.front().getRotation().normalize(), collected_tfs.back().getRotation().normalize(), current_scan_percentage));
+			if (future_tf_valid) {
+				current_interpolation_ratio = (current_point_time - past_tf_time).toSec() / laser_slice_time_increment_double;
+				point_transform.getOrigin().setInterpolate3(past_tf_translation, future_tf_translation, current_interpolation_ratio);
+				point_transform.setRotation(tf2::slerp(past_tf_rotation, future_tf_rotation, current_interpolation_ratio));
 			}
 
 			// transform point to target frame of reference
@@ -146,21 +138,81 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 			if (boost::math::isfinite(transformed_point.x()) && boost::math::isfinite(transformed_point.y()) && boost::math::isfinite(transformed_point.z())) {
 				// copy point to pointcloud
 				float intensity = 0;
-				if (point_pos < laser_scan->intensities.size()) {
-					intensity = (float)laser_scan->intensities[point_pos];
+				if (point_index < laser_scan->intensities.size()) {
+					intensity = (float)laser_scan->intensities[point_index];
 				}
 
 				addMeasureToPointCloud(transformed_point, intensity);  // virtual
 				++number_of_points_in_cloud_;
 			}
 		}
-		current_scan_percentage += one_scan_step_percentage;
+
+		if (future_tf_valid) {
+			current_point_time += laser_time_increment;
+			if (current_point_time > future_tf_time) {
+				past_tf_time = future_tf_time;
+				past_tf_translation = future_tf_translation;
+				past_tf_rotation = future_tf_rotation;
+
+				future_tf_time = past_tf_time + laser_slice_time_increment;
+				++future_tf_number;
+				while (future_tf_number < number_of_tf_queries_for_spherical_interpolation_) {
+					future_tf_valid = lookForTransformWithRecovery(future_tf_translation, future_tf_rotation, target_frame_, laser_scan->header.frame_id, future_tf_time, tf_lookup_timeout_);
+					if (future_tf_valid) { break; } else { ++future_tf_number; future_tf_time += laser_slice_time_increment; }
+				}
+			}
+		}
 	}
 
 	finishLaserScanIntegration(); // virtual
 	++number_of_scans_assembled_in_current_pointcloud_;
 	return true;
 }
+
+
+bool LaserScanToPointcloud::lookForTransformWithRecovery(tf2::Vector3& translation_out, tf2::Quaternion& rotation_out, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout) {
+	bool transform_available = tf_collector_.lookForTransform(translation_out, rotation_out, target_frame, source_frame, time, timeout);
+
+	if (!transform_available) { // try to recover using [ sensor_frame -> recovery_frame -> target_frame ]
+		if (recovery_frame_.empty()) {
+			ROS_WARN_STREAM("Laser assembler couldn't get TF [ " << source_frame << " -> " << target_frame << " ] at time " << time << " with TF timeout of " << timeout.toSec() << " seconds");
+			return false;
+		}
+
+		// try to update the recovery tf (if fails, uses the last one)
+		tf_collector_.lookForTransform(recovery_to_target_frame_transform_, target_frame, recovery_frame_, time, timeout);
+		tf2::Transform point_transform;
+		transform_available = tf_collector_.lookForTransform(point_transform, recovery_frame_, source_frame, time, timeout);
+
+		if (!transform_available) {
+			ROS_WARN_STREAM("Laser assembler couldn't get TF [ " << source_frame << " -> " << recovery_frame_ << " ] at time " << time << " with TF timeout of " << timeout.toSec() << " seconds");
+			return false;
+		}
+
+		ROS_WARN_STREAM("Recovering from lack of tf between " << source_frame << " and " << target_frame << " using " << recovery_frame_ << " as recovery frame");
+
+		point_transform = recovery_to_target_frame_transform_ * point_transform;
+		translation_out = point_transform.getOrigin();
+		rotation_out = point_transform.getRotation();
+	}
+
+	return true;
+}
+
+
+bool LaserScanToPointcloud::lookForTransformWithRecovery(tf2::Transform& point_transform_out, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout) {
+	tf2::Vector3 translation_out;
+	tf2::Quaternion rotation_out;
+
+	if (lookForTransformWithRecovery(translation_out, rotation_out, target_frame, source_frame, time, timeout)) {
+		point_transform_out.setOrigin(translation_out);
+		point_transform_out.setRotation(rotation_out);
+		return true;
+	}
+
+	return false;
+}
+
 
 void LaserScanToPointcloud::setRecoveryFrame(const std::string& recovery_frame, const tf2::Transform& recovery_to_target_frame_transform) {
 	recovery_frame_ = recovery_frame; recovery_to_target_frame_transform_ = recovery_to_target_frame_transform;
