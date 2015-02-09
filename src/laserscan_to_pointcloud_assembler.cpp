@@ -54,11 +54,13 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 	private_node_handle_->param("max_linear_velocity", max_linear_velocity_, 0.5);
 	private_node_handle_->param("max_angular_velocity", max_angular_velocity_, 0.174532925);
 
-	std::string target_frame_id;
+	std::string target_frame_id, laser_frame_id;
 	double number;
 	bool boolean;
 	private_node_handle_->param("target_frame", target_frame_id, std::string("map"));
 	laserscan_to_pointcloud_.setTargetFrame(target_frame_id);
+	private_node_handle_->param("laser_frame", laser_frame_id, std::string(""));
+	laserscan_to_pointcloud_.setLaserFrame(laser_frame_id);
 	private_node_handle_->param("include_laser_intensity", include_laser_intensity_, false);
 	laserscan_to_pointcloud_.setIncludeLaserIntensity(include_laser_intensity_);
 	private_node_handle_->param("min_range_cutoff_percentage_offset", number, 1.05);
@@ -179,7 +181,8 @@ void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserSc
 	}
 
 	if (!laserscan_to_pointcloud_.integrateLaserScanWithShpericalLinearInterpolation(laser_scan)) {
-		ROS_WARN_STREAM("Dropped LaserScan with " << laser_scan->ranges.size() << " points because of missing TFs between [" << laser_scan->header.frame_id << "] and [" << laserscan_to_pointcloud_.getTargetFrame() << "]" << " (dropped " << ++number_droped_laserscans_ << " LaserScans so far)");
+		std::string laser_frame = laserscan_to_pointcloud_.getLaserFrame().empty() ? laser_scan->header.frame_id : laserscan_to_pointcloud_.getLaserFrame();
+		ROS_WARN_STREAM("Dropped LaserScan with " << laser_scan->ranges.size() << " points because of missing TFs between [" << laser_frame << "] and [" << laserscan_to_pointcloud_.getTargetFrame() << "]" << " (dropped " << ++number_droped_laserscans_ << " LaserScans so far)");
 	}
 
 	timeout_for_cloud_assembly_reached_ = (ros::Time::now() - laserscan_to_pointcloud_.getPointcloud()->header.stamp) > timeout_for_cloud_assembly_;

@@ -78,11 +78,12 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 //	ros::Time scan_end_time = scan_start_time + scan_duration;
 	ros::Time scan_middle_time = scan_start_time + ros::Duration(scan_duration.toSec() / 2.0);
 
+	std::string laser_frame = laser_frame_.empty() ? laser_scan->header.frame_id : laser_frame_;
 
 	// tfs setup
 	ros::Time tf_query_time = number_of_tf_queries_for_spherical_interpolation_ < 1 ? scan_middle_time : scan_start_time;
 	tf2::Transform point_transform;
-	if (!lookForTransformWithRecovery(point_transform, target_frame_, laser_scan->header.frame_id, tf_query_time, tf_lookup_timeout_)) { return false; }
+	if (!lookForTransformWithRecovery(point_transform, target_frame_, laser_frame, tf_query_time, tf_lookup_timeout_)) { return false; }
 
 
 	// projection and transformation setup
@@ -107,7 +108,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 	bool future_tf_valid = false;
 	if (number_of_tf_queries_for_spherical_interpolation_ > 1) {
 		while (future_tf_number < number_of_tf_queries_for_spherical_interpolation_) {
-			future_tf_valid = lookForTransformWithRecovery(future_tf_translation, future_tf_rotation, target_frame_, laser_scan->header.frame_id, future_tf_time, tf_lookup_timeout_);
+			future_tf_valid = lookForTransformWithRecovery(future_tf_translation, future_tf_rotation, target_frame_, laser_frame, future_tf_time, tf_lookup_timeout_);
 			if (future_tf_valid) { break; } else { ++future_tf_number; future_tf_time += laser_slice_time_increment; }
 		}
 	}
@@ -157,7 +158,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 				future_tf_time = past_tf_time + laser_slice_time_increment;
 				++future_tf_number;
 				while (future_tf_number < number_of_tf_queries_for_spherical_interpolation_) {
-					future_tf_valid = lookForTransformWithRecovery(future_tf_translation, future_tf_rotation, target_frame_, laser_scan->header.frame_id, future_tf_time, tf_lookup_timeout_);
+					future_tf_valid = lookForTransformWithRecovery(future_tf_translation, future_tf_rotation, target_frame_, laser_frame, future_tf_time, tf_lookup_timeout_);
 					if (future_tf_valid) { break; } else { ++future_tf_number; future_tf_time += laser_slice_time_increment; }
 				}
 			}

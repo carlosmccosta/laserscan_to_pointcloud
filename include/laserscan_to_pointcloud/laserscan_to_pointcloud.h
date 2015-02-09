@@ -73,6 +73,7 @@ class LaserScanToPointcloud {
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <gets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		inline const std::string& getTargetFrame() const { return target_frame_; }
 		inline const std::string& getRecoveryFrame() const { return recovery_frame_; }
+		inline const std::string& getLaserFrame() const { return laser_frame_; }
 		inline double getMaxRangeCutoffPercentageOffset() const { return max_range_cutoff_percentage_offset_;}
 		inline double getMinRangeCutoffPercentageOffset() const { return min_range_cutoff_percentage_offset_; }
 
@@ -85,6 +86,7 @@ class LaserScanToPointcloud {
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		inline void setTargetFrame(const std::string& target_frame) { target_frame_ = target_frame; }
+		inline void setLaserFrame(const std::string& laser_frame) { laser_frame_ = laser_frame; }
 		void setRecoveryFrame(const std::string& recovery_frame, const tf2::Transform& recovery_to_target_frame_transform = tf2::Transform::getIdentity());
 		inline void setMaxRangeCutoffPercentageOffset(double max_range_cutoff_percentage_offset) { max_range_cutoff_percentage_offset_ = max_range_cutoff_percentage_offset; }
 		inline void setMinRangeCutoffPercentageOffset(double min_range_cutoff_percentage_offset) { min_range_cutoff_percentage_offset_ = min_range_cutoff_percentage_offset; }
@@ -93,7 +95,7 @@ class LaserScanToPointcloud {
 		inline void resetNumberOfScansAsembledInCurrentCloud() { number_of_scans_assembled_in_current_pointcloud_ = 0; }
 		inline void setTFLookupTimeout(double tf_lookup_timeout) { tf_lookup_timeout_.fromSec(tf_lookup_timeout); }
 		inline TFCollector& getTfCollector() { return tf_collector_; }
-		void setNumberOfTfQueriesForSphericalInterpolation(int number_of_tf_queries_for_spherical_interpolation) { number_of_tf_queries_for_spherical_interpolation_ = number_of_tf_queries_for_spherical_interpolation; }
+		inline void setNumberOfTfQueriesForSphericalInterpolation(int number_of_tf_queries_for_spherical_interpolation) { number_of_tf_queries_for_spherical_interpolation_ = number_of_tf_queries_for_spherical_interpolation; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </sets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	// ========================================================================   </public-section>   ==========================================================================
 
@@ -107,6 +109,7 @@ class LaserScanToPointcloud {
 		// configuration fields
 		std::string target_frame_;
 		std::string recovery_frame_;
+		std::string laser_frame_;
 		tf2::Transform recovery_to_target_frame_transform_;
 		double min_range_cutoff_percentage_offset_;
 		double max_range_cutoff_percentage_offset_;
