@@ -81,7 +81,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 	std::string laser_frame = laser_frame_.empty() ? laser_scan->header.frame_id : laser_frame_;
 
 	// tfs setup
-	ros::Time tf_query_time = number_of_tf_queries_for_spherical_interpolation_ < 1 ? scan_middle_time : scan_start_time;
+	ros::Time tf_query_time = number_of_tf_queries_for_spherical_interpolation_ < 2 ? scan_middle_time : scan_start_time;
 	tf2::Transform point_transform;
 	if (!lookForTransformWithRecovery(point_transform, target_frame_, laser_frame, tf_query_time, tf_lookup_timeout_)) { return false; }
 
@@ -93,7 +93,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 
 
 	// spherical interpolation setup
-	double laser_slice_time_increment_double = scan_duration.toSec() / (double)(number_of_tf_queries_for_spherical_interpolation_ - 1);
+	double laser_slice_time_increment_double = number_of_tf_queries_for_spherical_interpolation_ < 2 ? scan_duration.toSec() : scan_duration.toSec() / (double)(number_of_tf_queries_for_spherical_interpolation_ - 1);
 	ros::Duration laser_slice_time_increment(laser_slice_time_increment_double);
 
 	ros::Time past_tf_time = scan_start_time;
