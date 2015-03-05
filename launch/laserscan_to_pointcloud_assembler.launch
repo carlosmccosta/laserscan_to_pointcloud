@@ -21,7 +21,7 @@
 	<arg name="laser_frame" default="" /> <!-- Allows to override the frame_id in laser messages (empty -> used frame_id in header of sensor_msgs::LaserScan) -->
 	
 	<!-- Number of tfs used to performed laser spherical interpolation (if < 2 no interpolation is done and the tf in the middle of the scan time is used) -->
-	<!-- Spherical interpolation requires odometry / imu or any other source of movement estimation to be within the [source -> target] tf chain (otherwise it will not improve laser projection) -->
+	<!-- Spherical interpolation requires reliable odometry / imu or any other source of movement estimation to be within the [source -> target] tf chain (otherwise it will not improve laser projection) -->
 	<!-- The number of tf queries shouldn't be larger than the number of TF messages of movement estimation that will be published between the first and last laser measurement (for efficiency reasons) -->
 	<arg name="number_of_tf_queries_for_spherical_interpolation" default="4" />
 	

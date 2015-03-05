@@ -16,9 +16,9 @@
 int main(int argc, char** argv) {
 	ros::init(argc, argv, "laserscan_to_pointcloud_assembler");
 
-	if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info)) {
+	/*if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info)) {
 		ros::console::notifyLoggerLevelsChanged();
-	}
+	}*/
 
 	ros::NodeHandlePtr node_handle(new ros::NodeHandle());
 	ros::NodeHandlePtr private_node_handle(new ros::NodeHandle("~"));

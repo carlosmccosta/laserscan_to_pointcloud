@@ -76,12 +76,15 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 	ros::Duration scan_duration((double)number_of_scan_steps * (double)laser_scan->time_increment);
 	ros::Time scan_start_time = laser_scan->header.stamp;
 //	ros::Time scan_end_time = scan_start_time + scan_duration;
-	ros::Time scan_middle_time = scan_start_time + ros::Duration(scan_duration.toSec() / 2.0);
+	ros::Time scan_middle_time = scan_start_time;
+	if (laser_scan->time_increment > 0.0) {
+		scan_middle_time += ros::Duration(scan_duration.toSec() / 2.0);
+	}
 
 	std::string laser_frame = laser_frame_.empty() ? laser_scan->header.frame_id : laser_frame_;
 
 	// tfs setup
-	ros::Time tf_query_time = number_of_tf_queries_for_spherical_interpolation_ < 2 ? scan_middle_time : scan_start_time;
+	ros::Time tf_query_time = ((number_of_tf_queries_for_spherical_interpolation_ < 2) || (laser_scan->time_increment <= 0.0)) ? scan_middle_time : scan_start_time;
 	tf2::Transform point_transform;
 	if (!lookForTransformWithRecovery(point_transform, target_frame_, laser_frame, tf_query_time, tf_lookup_timeout_)) { return false; }
 
@@ -93,7 +96,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 
 
 	// spherical interpolation setup
-	double laser_slice_time_increment_double = number_of_tf_queries_for_spherical_interpolation_ < 2 ? scan_duration.toSec() : scan_duration.toSec() / (double)(number_of_tf_queries_for_spherical_interpolation_ - 1);
+	double laser_slice_time_increment_double = ((number_of_tf_queries_for_spherical_interpolation_ < 2) || (laser_scan->time_increment <= 0.0)) ? scan_duration.toSec() : scan_duration.toSec() / (double)(number_of_tf_queries_for_spherical_interpolation_ - 1);
 	ros::Duration laser_slice_time_increment(laser_slice_time_increment_double);
 
 	ros::Time past_tf_time = scan_start_time;
@@ -106,7 +109,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 	tf2::Quaternion future_tf_rotation;
 
 	bool future_tf_valid = false;
-	if (number_of_tf_queries_for_spherical_interpolation_ > 1) {
+	if ((number_of_tf_queries_for_spherical_interpolation_ > 1) && (laser_scan->time_increment > 0.0)) {
 		while (future_tf_number < number_of_tf_queries_for_spherical_interpolation_) {
 			future_tf_valid = lookForTransformWithRecovery(future_tf_translation, future_tf_rotation, target_frame_, laser_frame, future_tf_time, tf_lookup_timeout_);
 			if (future_tf_valid) { break; } else { ++future_tf_number; future_tf_time += laser_slice_time_increment; }
