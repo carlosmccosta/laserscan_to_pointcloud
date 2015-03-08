@@ -181,7 +181,7 @@ void LaserScanToPointcloudAssembler::processLaserScan(const sensor_msgs::LaserSc
 	}
 
 	std::string laser_frame = laserscan_to_pointcloud_.getLaserFrame().empty() ? laser_scan->header.frame_id : laserscan_to_pointcloud_.getLaserFrame();
-	ROS_DEBUG_STREAM("Adding laser scan " << number_of_scans_in_current_pointcloud << " in frame " << laser_frame << " with " << laser_scan->ranges.size() << " points to a point cloud with " << laserscan_to_pointcloud_.getNumberOfPointsInCloud() << " points");
+	ROS_DEBUG_STREAM("Adding laser scan " << number_of_scans_in_current_pointcloud << " in frame " << laser_frame << " with " << laser_scan->ranges.size() << " points to a point cloud with " << laserscan_to_pointcloud_.getNumberOfPointsInCloud() << " points in frame " << laserscan_to_pointcloud_.getTargetFrame());
 
 	if (!laserscan_to_pointcloud_.integrateLaserScanWithShpericalLinearInterpolation(laser_scan)) {
 		ROS_WARN_STREAM("Dropped LaserScan with " << laser_scan->ranges.size() << " points because of missing TFs between [" << laser_frame << "] and [" << laserscan_to_pointcloud_.getTargetFrame() << "]" << " (dropped " << ++number_droped_laserscans_ << " LaserScans so far)");
