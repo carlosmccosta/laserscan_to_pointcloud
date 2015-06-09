@@ -4,6 +4,7 @@
 	<arg name="number_of_scans_to_assemble_per_cloud" default="10" />
 	<arg name="timeout_for_cloud_assembly" default="1.0" />
 	<arg name="pointcloud_publish_topic" default="ambient_pointcloud" />
+	<arg name="nodes_respawn" default="true" />
 
 	<!-- the assembly configurations can be dynamically changed based on twist messages (or twist from odometry messages) -->
 	<!-- the assembly time and number of scans to join are set to the lowest values computed from the linear angular velocities -->
@@ -39,7 +40,7 @@
 	<arg name="recovery_to_target_frame_transform_initial_yaw" default="0.0" />
 
 	<!-- LaserScan assembler -->
-	<node pkg="laserscan_to_pointcloud" type="laserscan_to_pointcloud_assembler" name="$(anon laserscan_to_pointcloud_assembler)" respawn="true" output="screen">
+	<node pkg="laserscan_to_pointcloud" type="laserscan_to_pointcloud_assembler" name="$(anon laserscan_to_pointcloud_assembler)" respawn="$(arg nodes_respawn)" clear_params="true" output="screen">
 		<param name="laser_scan_topics" type="str" value="$(arg laser_scan_topics)" />
 		<param name="pointcloud_publish_topic" type="str" value="$(arg pointcloud_publish_topic)" />
 		<param name="number_of_scans_to_assemble_per_cloud" type="int" value="$(arg number_of_scans_to_assemble_per_cloud)" />
