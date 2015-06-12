@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 echo "####################################################################################################"
 echo "##### Creating eclipse project for package laserscan_to_pointcloud"
