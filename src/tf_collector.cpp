@@ -42,17 +42,15 @@ bool TFCollector::collectTFs(const std::string& target_frame, const std::string&
 }
 
 
-bool TFCollector::lookForLatestTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const std::string& source_frame, const ros::Duration& timeout) {
+bool TFCollector::lookForLatestTransform(tf2::Transform& tf2_transformOut, const std::string& target_frame, const std::string& source_frame, const ros::Duration& timeout, size_t number_of_queries) {
 	ros::Time start_time = ros::Time::now();
 	ros::Time end_time = start_time + timeout;
-	ros::Duration wait_duration(0.005);
-	ros::Duration lookup_timeout(0.01);
+	ros::Duration lookup_timeout(timeout.toSec() / ((double) number_of_queries));
 
 	while (ros::Time::now() < end_time) {
-		if (lookForTransform(tf2_transformOut, target_frame, source_frame, ros::Time::now(), lookup_timeout)) {
+		if (lookForTransform(tf2_transformOut, target_frame, source_frame, ros::Time(0.0), lookup_timeout)) {
 			return true;
 		}
-		wait_duration.sleep();
 	}
 
 	return false;
