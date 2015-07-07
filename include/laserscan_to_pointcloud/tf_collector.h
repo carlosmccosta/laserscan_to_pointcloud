@@ -76,6 +76,8 @@ class TFCollector {
 		bool lookForTransform(tf2::Transform& tf2_transform_out, const std::string& target_frame, const ros::Time& target_time,
 				const std::string& source_frame, const ros::Time& source_time,
 				const std::string& fixed_frame, const ros::Duration& timeout = ros::Duration(0.2));
+		bool startsWithSlash(const std::string& frame_id);
+		void stripSlash(std::string& frame_id);
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </TFCollector-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
