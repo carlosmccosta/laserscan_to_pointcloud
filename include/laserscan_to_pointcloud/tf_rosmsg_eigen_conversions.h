@@ -26,6 +26,7 @@
 
 // external libs includes
 #include <Eigen/Core>
+#include <Eigen/Geometry>
 
 // project includes
 
