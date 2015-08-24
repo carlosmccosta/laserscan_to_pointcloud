@@ -82,6 +82,7 @@ class LaserScanToPointcloud {
 		inline size_t getNumberOfScansAssembledInCurrentPointcloud() const { return number_of_scans_assembled_in_current_pointcloud_; }
 		inline ros::Duration getTfLookupTimeout() const { return tf_lookup_timeout_; }
 		inline int getNumberOfTfQueriesForSphericalInterpolation() const { return number_of_tf_queries_for_spherical_interpolation_; }
+		inline bool isRemoveInvalidMeasurements() const { return remove_invalid_measurements_; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </gets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -96,6 +97,7 @@ class LaserScanToPointcloud {
 		inline void setTFLookupTimeout(double tf_lookup_timeout) { tf_lookup_timeout_.fromSec(tf_lookup_timeout); }
 		inline TFCollector& getTfCollector() { return tf_collector_; }
 		inline void setNumberOfTfQueriesForSphericalInterpolation(int number_of_tf_queries_for_spherical_interpolation) { number_of_tf_queries_for_spherical_interpolation_ = number_of_tf_queries_for_spherical_interpolation; }
+		inline void setRemoveInvalidMeasurements(bool removeInvalidMeasurements) { remove_invalid_measurements_ = removeInvalidMeasurements; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </sets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	// ========================================================================   </public-section>   ==========================================================================
 
@@ -115,6 +117,7 @@ class LaserScanToPointcloud {
 		double max_range_cutoff_percentage_offset_;
 		int number_of_tf_queries_for_spherical_interpolation_;
 		ros::Duration tf_lookup_timeout_;
+		bool remove_invalid_measurements_;
 
 		// state fields
 		size_t number_of_pointclouds_created_;

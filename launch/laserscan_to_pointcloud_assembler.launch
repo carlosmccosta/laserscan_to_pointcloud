@@ -29,6 +29,7 @@
 	<arg name="min_range_cutoff_percentage_offset" default="2.00" />
 	<arg name="max_range_cutoff_percentage_offset" default="0.95" />
 	<arg name="tf_lookup_timeout" default="0.15" />
+	<arg name="remove_invalid_measurements" default="true" />
 	<arg name="recovery_frame" default="odom" />
 	<arg name="initial_recovery_transform_in_base_link_to_target" default="false" /> <!-- if false -> transform assumed to be recovery_link -> target -->
 	<arg name="base_link_frame_id" default="base_footprint" />
@@ -61,6 +62,7 @@
 		<param name="include_laser_intensity" type="bool" value="false" />
 		<param name="number_of_tf_queries_for_spherical_interpolation" type="int" value="$(arg number_of_tf_queries_for_spherical_interpolation)" />
 		<param name="tf_lookup_timeout" type="double" value="$(arg tf_lookup_timeout)" />
+		<param name="remove_invalid_measurements" type="bool" value="$(arg remove_invalid_measurements)" />
 		<param name="recovery_frame" type="str" value="$(arg recovery_frame)" />
 		<param name="initial_recovery_transform_in_base_link_to_target" type="bool" value="$(arg initial_recovery_transform_in_base_link_to_target)" />
 		<param name="base_link_frame_id" type="str" value="$(arg base_link_frame_id)" />

@@ -67,6 +67,8 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 	laserscan_to_pointcloud_.setMinRangeCutoffPercentageOffset(number);
 	private_node_handle_->param("max_range_cutoff_percentage_offset", number, 0.95);
 	laserscan_to_pointcloud_.setMaxRangeCutoffPercentageOffset(number);
+	private_node_handle_->param("remove_invalid_measurements", boolean, true);
+	laserscan_to_pointcloud_.setRemoveInvalidMeasurements(boolean);
 
 	int integer;
 	private_node_handle_->param("number_of_tf_queries_for_spherical_interpolation", integer, 4);

@@ -21,6 +21,7 @@ LaserScanToPointcloud::LaserScanToPointcloud(std::string target_frame, double mi
 		target_frame_(target_frame),
 		min_range_cutoff_percentage_offset_(min_range_cutoff_percentage), max_range_cutoff_percentage_offset_(max_range_cutoff_percentage),
 		tf_lookup_timeout_(tf_lookup_timeout),
+		remove_invalid_measurements_(true),
 		number_of_tf_queries_for_spherical_interpolation_(number_of_tf_queries_for_spherical_interpolation),
 		number_of_pointclouds_created_(0),
 		number_of_points_in_cloud_(0),
@@ -139,7 +140,8 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 			// transform point to target frame of reference
 			tf2::Vector3 transformed_point = point_transform * projected_point;
 
-			if (boost::math::isfinite(transformed_point.x()) && boost::math::isfinite(transformed_point.y()) && boost::math::isfinite(transformed_point.z())) {
+			if (!remove_invalid_measurements_ ||
+				(boost::math::isfinite(transformed_point.x()) && boost::math::isfinite(transformed_point.y()) && boost::math::isfinite(transformed_point.z()))) {
 				// copy point to pointcloud
 				float intensity = 0;
 				if (point_index < laser_scan->intensities.size()) {
