@@ -57,6 +57,7 @@ include_directories(
 add_library(tf_rosmsg_eigen_conversions src/tf_rosmsg_eigen_conversions.cpp)
 add_library(tf_collector src/tf_collector.cpp)
 add_library(laserscan_to_pointcloud src/laserscan_to_pointcloud.cpp)
+add_library(polar_to_cartesian_matrix_cache src/polar_to_cartesian_matrix_cache.cpp)
 
 add_executable(laserscan_to_pointcloud_assembler
     src/laserscan_to_ros_pointcloud.cpp
@@ -67,6 +68,6 @@ add_executable(laserscan_to_pointcloud_assembler
 add_dependencies(laserscan_to_pointcloud_assembler ${PROJECT_NAME}_gencfg)
 
 target_link_libraries(tf_collector tf_rosmsg_eigen_conversions ${catkin_LIBRARIES})
-target_link_libraries(laserscan_to_pointcloud tf_collector ${catkin_LIBRARIES})
+target_link_libraries(laserscan_to_pointcloud tf_collector polar_to_cartesian_matrix_cache ${catkin_LIBRARIES})
 target_link_libraries(laserscan_to_pointcloud_assembler laserscan_to_pointcloud ${catkin_LIBRARIES})
 

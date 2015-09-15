@@ -30,6 +30,7 @@
 
 // project includes
 #include <laserscan_to_pointcloud/tf_collector.h>
+#include <laserscan_to_pointcloud/polar_to_cartesian_matrix_cache.h>
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </includes>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
@@ -64,7 +65,6 @@ class LaserScanToPointcloud {
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToPointcloud-virtual-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		bool updatePolarToCartesianProjectionMatrix(const sensor_msgs::LaserScanConstPtr& laser_scan);
 		bool integrateLaserScanWithShpericalLinearInterpolation(const sensor_msgs::LaserScanConstPtr& laser_scan);
 		bool lookForTransformWithRecovery(tf2::Vector3& translation_out, tf2::Quaternion& rotation_out, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout = ros::Duration(0.2));
 		bool lookForTransformWithRecovery(tf2::Transform& point_transform_out, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout = ros::Duration(0.2));
@@ -123,10 +123,7 @@ class LaserScanToPointcloud {
 		size_t number_of_pointclouds_created_;
 		size_t number_of_points_in_cloud_;
 		size_t number_of_scans_assembled_in_current_pointcloud_;
-		Eigen::Array2Xf polar_to_cartesian_matrix_; ///> matrix with sin(theta) and cos(theta) for each laser scan ray
-		float polar_to_cartesian_matrix_angle_min_;
-		float polar_to_cartesian_matrix_angle_max_;
-		float polar_to_cartesian_matrix_angle_increment_;
+		PolarToCartesianCache polar_to_cartesian_cache_;
 
 		// communication fields
 		TFCollector tf_collector_;

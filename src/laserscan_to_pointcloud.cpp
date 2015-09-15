@@ -25,11 +25,7 @@ LaserScanToPointcloud::LaserScanToPointcloud(std::string target_frame, double mi
 		number_of_tf_queries_for_spherical_interpolation_(number_of_tf_queries_for_spherical_interpolation),
 		number_of_pointclouds_created_(0),
 		number_of_points_in_cloud_(0),
-		number_of_scans_assembled_in_current_pointcloud_(0),
-		polar_to_cartesian_matrix_angle_min_(0), polar_to_cartesian_matrix_angle_max_(0), polar_to_cartesian_matrix_angle_increment_(0) {
-
-	polar_to_cartesian_matrix_.resize(Eigen::NoChange, 0);
-}
+		number_of_scans_assembled_in_current_pointcloud_(0) {}
 
 LaserScanToPointcloud::~LaserScanToPointcloud() {}
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </constructors-destructor>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -37,39 +33,6 @@ LaserScanToPointcloud::~LaserScanToPointcloud() {}
 
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <LaserScanToPointcloud-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-bool LaserScanToPointcloud::updatePolarToCartesianProjectionMatrix(const sensor_msgs::LaserScanConstPtr& laser_scan) {
-	size_t number_of_scan_points = laser_scan->ranges.size();
-	if (polar_to_cartesian_matrix_.cols() != number_of_scan_points
-			/*|| polar_to_cartesian_matrix_angle_min_ != laser_scan->angle_min
-			|| polar_to_cartesian_matrix_angle_max_ != laser_scan->angle_max
-			|| polar_to_cartesian_matrix_angle_increment_ != laser_scan->angle_increment*/) { // todo: fix float compare
-
-		ROS_DEBUG_STREAM("Updating polar to cartesian projection matrix with ->" \
-				<< "\n\t[ranges.size()]:" << laser_scan->ranges.size() \
-				<< "\n\t[angle_min]:" << laser_scan->angle_min \
-				<< "\n\t[angle_max]:" << laser_scan->angle_max
-				<< "\n\t[increment]:" << laser_scan->angle_increment);
-
-		// recompute sin and cos values
-		polar_to_cartesian_matrix_.resize(Eigen::NoChange, laser_scan->ranges.size());
-		polar_to_cartesian_matrix_angle_min_ = laser_scan->range_min;
-		polar_to_cartesian_matrix_angle_max_ = laser_scan->range_max;
-		polar_to_cartesian_matrix_angle_increment_ = laser_scan->angle_increment;
-
-		double current_angle = laser_scan->angle_min;
-		for (size_t point_pos = 0; point_pos < number_of_scan_points; ++point_pos) {
-			polar_to_cartesian_matrix_(0, point_pos) = std::cos(current_angle);
-			polar_to_cartesian_matrix_(1, point_pos) = std::sin(current_angle);
-			current_angle += laser_scan->angle_increment;
-		}
-
-		return true;
-	}
-
-	return false;
-}
-
-
 bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(const sensor_msgs::LaserScanConstPtr& laser_scan) {
 	// laser info
 	size_t number_of_scan_points = laser_scan->ranges.size();
@@ -91,7 +54,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 
 
 	// projection and transformation setup
-	updatePolarToCartesianProjectionMatrix(laser_scan);
+	const Eigen::Array2Xf& polar_to_cartesian_matrix = polar_to_cartesian_cache_.getPolarToCartesianMatrix(laser_scan->ranges.size(), laser_scan->angle_min, laser_scan->angle_increment);
 	double min_range_cutoff = laser_scan->range_min * min_range_cutoff_percentage_offset_;
 	double max_range_cutoff = laser_scan->range_max * max_range_cutoff_percentage_offset_;
 
@@ -128,7 +91,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 		float point_range_value = laser_scan->ranges[point_index];
 		if (point_range_value > min_range_cutoff && point_range_value < max_range_cutoff) {
 			// project laser scan point in 2D (in the laser frame of reference)
-			tf2::Vector3 projected_point(point_range_value * polar_to_cartesian_matrix_(0, point_index), point_range_value * polar_to_cartesian_matrix_(1, point_index), 0);
+			tf2::Vector3 projected_point(point_range_value * polar_to_cartesian_matrix(0, point_index), point_range_value * polar_to_cartesian_matrix(1, point_index), 0);
 
 			// interpolate position and rotation
 			if (future_tf_valid) {
