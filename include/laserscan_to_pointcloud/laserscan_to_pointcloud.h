@@ -21,6 +21,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Vector3.h>
 #include <tf2/LinearMath/Transform.h>
 
@@ -68,12 +69,15 @@ class LaserScanToPointcloud {
 		bool integrateLaserScanWithShpericalLinearInterpolation(const sensor_msgs::LaserScanConstPtr& laser_scan);
 		bool lookForTransformWithRecovery(tf2::Vector3& translation_out, tf2::Quaternion& rotation_out, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout = ros::Duration(0.2));
 		bool lookForTransformWithRecovery(tf2::Transform& point_transform_out, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout = ros::Duration(0.2));
+		bool updatePointTransformWithMotionEstimation(tf2::Transform& motion_estimation_transform_in_out, tf2::Vector3& translation_in_out, tf2::Quaternion& rotation_in_out, const std::string& motion_estimation_target_frame, const std::string& motion_estimation_source_frame, const ros::Time& time, const ros::Duration& timeout = ros::Duration(0.2));
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToPointcloud-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <gets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		inline const std::string& getTargetFrame() const { return target_frame_; }
 		inline const std::string& getRecoveryFrame() const { return recovery_frame_; }
 		inline const std::string& getLaserFrame() const { return laser_frame_; }
+		inline const std::string& getMotionEstimationSourceFrame() const { return motion_estimation_source_frame_; }
+		inline const std::string& getMotionEstimationTargetFrame() const { return motion_estimation_target_frame_; }
 		inline double getMaxRangeCutoffPercentageOffset() const { return max_range_cutoff_percentage_offset_;}
 		inline double getMinRangeCutoffPercentageOffset() const { return min_range_cutoff_percentage_offset_; }
 
@@ -89,6 +93,8 @@ class LaserScanToPointcloud {
 		inline void setTargetFrame(const std::string& target_frame) { target_frame_ = target_frame; }
 		inline void setLaserFrame(const std::string& laser_frame) { laser_frame_ = laser_frame; }
 		void setRecoveryFrame(const std::string& recovery_frame, const tf2::Transform& recovery_to_target_frame_transform = tf2::Transform::getIdentity());
+		inline void setMotionEstimationSourceFrame(const std::string& motionEstimationSourceFrame) { motion_estimation_source_frame_ = motionEstimationSourceFrame; }
+		inline void setMotionEstimationTargetFrame(const std::string& motionEstimationTargetFrame) { motion_estimation_target_frame_ = motionEstimationTargetFrame; }
 		inline void setMaxRangeCutoffPercentageOffset(double max_range_cutoff_percentage_offset) { max_range_cutoff_percentage_offset_ = max_range_cutoff_percentage_offset; }
 		inline void setMinRangeCutoffPercentageOffset(double min_range_cutoff_percentage_offset) { min_range_cutoff_percentage_offset_ = min_range_cutoff_percentage_offset; }
 		inline void incrementNumberOfPointCloudsCreated() { ++number_of_pointclouds_created_; }
@@ -112,6 +118,8 @@ class LaserScanToPointcloud {
 		std::string target_frame_;
 		std::string recovery_frame_;
 		std::string laser_frame_;
+		std::string motion_estimation_source_frame_;
+		std::string motion_estimation_target_frame_;
 		tf2::Transform recovery_to_target_frame_transform_;
 		double min_range_cutoff_percentage_offset_;
 		double max_range_cutoff_percentage_offset_;

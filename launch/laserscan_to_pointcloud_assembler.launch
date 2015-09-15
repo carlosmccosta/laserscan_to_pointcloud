@@ -18,7 +18,9 @@
 	<arg name="max_linear_velocity" default="0.035" /> <!-- when the linear velocity of the robot is equal or greater than this value, the number of scans to join and assembly timeout will be set to their minimum values specified above -->
 	<arg name="max_angular_velocity" default="0.1" /> <!-- when the angular velocity of the robot is equal or greater than this value, the number of scans to join and assembly timeout will be set to their minimum values specified above -->
 	
-	<arg name="target_frame" default="map" />
+	<arg name="target_frame" default="odom" /> <!-- TF chain must have motion estimation in order to perform spherical linear interpolation. If it doesn't, specify the motion estimation TF chain with the parameters motion_estimation_source_frame_id and motion_estimation_target_frame_id -->
+	<arg name="motion_estimation_source_frame_id" default="" /> <!-- for example: base_footprint -->
+	<arg name="motion_estimation_target_frame_id" default="" /> <!-- for example: odom -->
 	<arg name="laser_frame" default="" /> <!-- Allows to override the frame_id in laser messages (empty -> used frame_id in header of sensor_msgs::LaserScan) -->
 	
 	<!-- Number of tfs used to performed laser spherical interpolation (if < 2 no interpolation is done and the tf in the middle of the scan time is used) -->
@@ -57,6 +59,8 @@
 		<param name="max_angular_velocity" type="double" value="$(arg max_angular_velocity)" />
 		<param name="target_frame" type="str" value="$(arg target_frame)" />
 		<param name="laser_frame" type="str" value="$(arg laser_frame)" />
+		<param name="motion_estimation_source_frame_id" type="str" value="$(arg motion_estimation_source_frame_id)" />
+		<param name="motion_estimation_target_frame_id" type="str" value="$(arg motion_estimation_target_frame_id)" />
 		<param name="min_range_cutoff_percentage_offset" type="double" value="$(arg min_range_cutoff_percentage_offset)" />
 		<param name="max_range_cutoff_percentage_offset" type="double" value="$(arg max_range_cutoff_percentage_offset)" />
 		<param name="include_laser_intensity" type="bool" value="false" />

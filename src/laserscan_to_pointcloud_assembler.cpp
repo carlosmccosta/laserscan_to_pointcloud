@@ -54,13 +54,17 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 	private_node_handle_->param("max_linear_velocity", max_linear_velocity_, 0.5);
 	private_node_handle_->param("max_angular_velocity", max_angular_velocity_, 0.174532925);
 
-	std::string target_frame_id, laser_frame_id;
+	std::string target_frame_id, laser_frame_id, motion_estimation_source_frame_id, motion_estimation_target_frame_id;
 	double number;
 	bool boolean;
 	private_node_handle_->param("target_frame", target_frame_id, std::string("map"));
 	laserscan_to_pointcloud_.setTargetFrame(target_frame_id);
 	private_node_handle_->param("laser_frame", laser_frame_id, std::string(""));
 	laserscan_to_pointcloud_.setLaserFrame(laser_frame_id);
+	private_node_handle_->param("motion_estimation_source_frame_id", motion_estimation_source_frame_id, std::string(""));
+	laserscan_to_pointcloud_.setMotionEstimationSourceFrame(motion_estimation_source_frame_id);
+	private_node_handle_->param("motion_estimation_target_frame_id", motion_estimation_target_frame_id, std::string(""));
+	laserscan_to_pointcloud_.setMotionEstimationTargetFrame(motion_estimation_target_frame_id);
 	private_node_handle_->param("include_laser_intensity", include_laser_intensity_, false);
 	laserscan_to_pointcloud_.setIncludeLaserIntensity(include_laser_intensity_);
 	private_node_handle_->param("min_range_cutoff_percentage_offset", number, 1.05);

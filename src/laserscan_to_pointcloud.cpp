@@ -53,6 +53,12 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 	if (!lookForTransformWithRecovery(point_transform, target_frame_, laser_frame, tf_query_time, tf_lookup_timeout_)) { return false; }
 
 
+	tf2::Transform motion_estimation_transform = tf2::Transform::getIdentity();
+	if (!motion_estimation_source_frame_.empty() && !motion_estimation_target_frame_.empty()) {
+		if (!lookForTransformWithRecovery(motion_estimation_transform, motion_estimation_target_frame_, motion_estimation_source_frame_, tf_query_time, tf_lookup_timeout_)) { return false; }
+	}
+
+
 	// projection and transformation setup
 	const Eigen::Array2Xf& polar_to_cartesian_matrix = polar_to_cartesian_cache_.getPolarToCartesianMatrix(laser_scan->ranges.size(), laser_scan->angle_min, laser_scan->angle_increment);
 	double min_range_cutoff = laser_scan->range_min * min_range_cutoff_percentage_offset_;
@@ -69,13 +75,18 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 
 	size_t future_tf_number = 1;
 	ros::Time future_tf_time = past_tf_time + laser_slice_time_increment;
-	tf2::Vector3 future_tf_translation;
-	tf2::Quaternion future_tf_rotation;
+	tf2::Vector3 future_tf_translation = past_tf_translation;
+	tf2::Quaternion future_tf_rotation = past_tf_rotation;
 
 	bool future_tf_valid = false;
 	if ((number_of_tf_queries_for_spherical_interpolation_ > 1) && (laser_scan->time_increment > 0.0)) {
 		while (future_tf_number < number_of_tf_queries_for_spherical_interpolation_) {
-			future_tf_valid = lookForTransformWithRecovery(future_tf_translation, future_tf_rotation, target_frame_, laser_frame, future_tf_time, tf_lookup_timeout_);
+			if (!motion_estimation_source_frame_.empty() && !motion_estimation_target_frame_.empty()) {
+				future_tf_valid = updatePointTransformWithMotionEstimation(motion_estimation_transform, future_tf_translation, future_tf_rotation, motion_estimation_target_frame_, motion_estimation_source_frame_, future_tf_time, tf_lookup_timeout_);
+			} else {
+				future_tf_valid = lookForTransformWithRecovery(future_tf_translation, future_tf_rotation, target_frame_, laser_frame, future_tf_time, tf_lookup_timeout_);
+			}
+
 			if (future_tf_valid) { break; } else { ++future_tf_number; future_tf_time += laser_slice_time_increment; }
 		}
 	}
@@ -126,7 +137,12 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 				future_tf_time = past_tf_time + laser_slice_time_increment;
 				++future_tf_number;
 				while (future_tf_number < number_of_tf_queries_for_spherical_interpolation_) {
-					future_tf_valid = lookForTransformWithRecovery(future_tf_translation, future_tf_rotation, target_frame_, laser_frame, future_tf_time, tf_lookup_timeout_);
+					if (!motion_estimation_source_frame_.empty() && !motion_estimation_target_frame_.empty()) {
+						future_tf_valid = updatePointTransformWithMotionEstimation(motion_estimation_transform, future_tf_translation, future_tf_rotation, motion_estimation_target_frame_, motion_estimation_source_frame_, future_tf_time, tf_lookup_timeout_);
+					} else {
+						future_tf_valid = lookForTransformWithRecovery(future_tf_translation, future_tf_rotation, target_frame_, laser_frame, future_tf_time, tf_lookup_timeout_);
+					}
+
 					if (future_tf_valid) { break; } else { ++future_tf_number; future_tf_time += laser_slice_time_increment; }
 				}
 			}
@@ -140,6 +156,12 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 
 
 bool LaserScanToPointcloud::lookForTransformWithRecovery(tf2::Vector3& translation_out, tf2::Quaternion& rotation_out, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout) {
+	if (source_frame == target_frame) {
+		translation_out.setZero();
+		rotation_out.setValue(0,0,0,1);
+		return true;
+	}
+
 	bool transform_available = tf_collector_.lookForTransform(translation_out, rotation_out, target_frame, source_frame, time, timeout);
 
 	if (!transform_available) { // try to recover using [ sensor_frame -> recovery_frame -> target_frame ]
@@ -170,6 +192,12 @@ bool LaserScanToPointcloud::lookForTransformWithRecovery(tf2::Vector3& translati
 
 
 bool LaserScanToPointcloud::lookForTransformWithRecovery(tf2::Transform& point_transform_out, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout) {
+	if (source_frame == target_frame) {
+		point_transform_out.setOrigin(tf2::Vector3(0,0,0));
+		point_transform_out.setRotation(tf2::Quaternion(0,0,0,1));
+		return true;
+	}
+
 	tf2::Vector3 translation_out;
 	tf2::Quaternion rotation_out;
 
@@ -185,6 +213,24 @@ bool LaserScanToPointcloud::lookForTransformWithRecovery(tf2::Transform& point_t
 
 void LaserScanToPointcloud::setRecoveryFrame(const std::string& recovery_frame, const tf2::Transform& recovery_to_target_frame_transform) {
 	recovery_frame_ = recovery_frame; recovery_to_target_frame_transform_ = recovery_to_target_frame_transform;
+}
+
+
+bool LaserScanToPointcloud::updatePointTransformWithMotionEstimation(tf2::Transform& motion_transform_in_out, tf2::Vector3& translation_in_out, tf2::Quaternion& rotation_in_out, const std::string& motion_estimation_target_frame, const std::string& motion_estimation_source_frame, const ros::Time& time, const ros::Duration& timeout) {
+	tf2::Transform current_motion_transform;
+	if (lookForTransformWithRecovery(current_motion_transform, motion_estimation_target_frame, motion_estimation_source_frame, time, timeout)) {
+		tf2::Transform motion_estimation = motion_transform_in_out.inverse() * current_motion_transform;
+		tf2::Transform current_sensor_pose(rotation_in_out, translation_in_out);
+		current_sensor_pose = motion_estimation * current_sensor_pose;
+		translation_in_out = current_sensor_pose.getOrigin();
+		rotation_in_out = current_sensor_pose.getRotation();
+		motion_transform_in_out = current_motion_transform;
+		return true;
+	}
+
+	ROS_WARN_STREAM("Laser assembler couldn't get TF [ " << motion_estimation_source_frame << " -> " << motion_estimation_target_frame << " ] at time " << time << " with TF timeout of " << timeout.toSec() << " seconds");
+
+	return false;
 }
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </LaserScanToPointcloud-functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 // =============================================================================  </public-section>   ==========================================================================
