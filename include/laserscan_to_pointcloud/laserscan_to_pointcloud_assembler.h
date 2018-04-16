@@ -16,6 +16,7 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <map>
 #include <cmath>
 
 // ROS includes
@@ -107,6 +108,8 @@ class LaserScanToPointcloudAssembler {
 		// laserscan_to_pointcloud_ config fields
 		LaserScanToROSPointcloud laserscan_to_pointcloud_;
 		bool include_laser_intensity_;
+		bool enforce_reception_of_laser_scans_in_all_topics_;
+		std::map<std::string, sensor_msgs::LaserScanConstPtr> laser_scans_for_each_topic_frame_id_;
 
 		// state fieds
 		size_t number_droped_laserscans_;

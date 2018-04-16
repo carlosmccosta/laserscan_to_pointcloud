@@ -28,6 +28,8 @@
 	<!-- The number of tf queries shouldn't be larger than the number of TF messages of movement estimation that will be published between the first and last laser measurement (for efficiency reasons) -->
 	<arg name="number_of_tf_queries_for_spherical_interpolation" default="4" />
 	
+	<arg name="enforce_reception_of_laser_scans_in_all_topics" default="true" />
+	
 	<arg name="min_range_cutoff_percentage_offset" default="2.00" />
 	<arg name="max_range_cutoff_percentage_offset" default="0.95" />
 	<arg name="tf_lookup_timeout" default="0.15" />
@@ -64,6 +66,7 @@
 		<param name="min_range_cutoff_percentage_offset" type="double" value="$(arg min_range_cutoff_percentage_offset)" />
 		<param name="max_range_cutoff_percentage_offset" type="double" value="$(arg max_range_cutoff_percentage_offset)" />
 		<param name="include_laser_intensity" type="bool" value="false" />
+		<param name="enforce_reception_of_laser_scans_in_all_topics" type="bool" value="$(arg enforce_reception_of_laser_scans_in_all_topics)" />
 		<param name="number_of_tf_queries_for_spherical_interpolation" type="int" value="$(arg number_of_tf_queries_for_spherical_interpolation)" />
 		<param name="tf_lookup_timeout" type="double" value="$(arg tf_lookup_timeout)" />
 		<param name="remove_invalid_measurements" type="bool" value="$(arg remove_invalid_measurements)" />
