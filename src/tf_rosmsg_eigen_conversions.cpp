@@ -57,10 +57,10 @@ void transformMsgToTF2(const geometry_msgs::Quaternion& msg, tf2::Quaternion& tf
 
 void transformTF2ToMsg(const tf2::Quaternion& tf2, geometry_msgs::Quaternion& msg) {
 	tf2::Quaternion tf2_n = tf2.normalized();
-	msg.x = tf2.getX();
-	msg.y = tf2.getY();
-	msg.z = tf2.getX();
-	msg.w = tf2.getW();
+	msg.x = tf2_n.getX();
+	msg.y = tf2_n.getY();
+	msg.z = tf2_n.getX();
+	msg.w = tf2_n.getW();
 }
 
 

@@ -14,7 +14,7 @@ namespace laserscan_to_pointcloud {
 // =============================================================================  <public-section>   ===========================================================================
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <PolarToCartesianCache-functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 const Eigen::Array2Xf& PolarToCartesianCache::getPolarToCartesianMatrix(size_t polar_to_cartesian_matrix_number_measurements, float polar_to_cartesian_matrix_angle_min, float polar_to_cartesian_matrix_angle_increment) {
-	for (int i = 0; i < matrices_cache_.size(); ++i) {
+	for (size_t i = 0; i < matrices_cache_.size(); ++i) {
 		if (matrices_cache_[i].polar_to_cartesian_matrix_number_measurements_ 	== polar_to_cartesian_matrix_number_measurements &&
 			matrices_cache_[i].polar_to_cartesian_matrix_angle_min_ 			== polar_to_cartesian_matrix_angle_min &&
 			matrices_cache_[i].polar_to_cartesian_matrix_angle_increment_ 		== polar_to_cartesian_matrix_angle_increment) {

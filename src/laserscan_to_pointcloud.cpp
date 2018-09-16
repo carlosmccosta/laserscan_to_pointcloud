@@ -20,9 +20,9 @@ namespace laserscan_to_pointcloud {
 LaserScanToPointcloud::LaserScanToPointcloud(std::string target_frame, double min_range_cutoff_percentage, double max_range_cutoff_percentage, int number_of_tf_queries_for_spherical_interpolation, double tf_lookup_timeout) :
 		target_frame_(target_frame),
 		min_range_cutoff_percentage_offset_(min_range_cutoff_percentage), max_range_cutoff_percentage_offset_(max_range_cutoff_percentage),
+		number_of_tf_queries_for_spherical_interpolation_(number_of_tf_queries_for_spherical_interpolation),
 		tf_lookup_timeout_(tf_lookup_timeout),
 		remove_invalid_measurements_(true),
-		number_of_tf_queries_for_spherical_interpolation_(number_of_tf_queries_for_spherical_interpolation),
 		number_of_pointclouds_created_(0),
 		number_of_points_in_cloud_(0),
 		number_of_scans_assembled_in_current_pointcloud_(0) {}
@@ -73,7 +73,7 @@ bool LaserScanToPointcloud::integrateLaserScanWithShpericalLinearInterpolation(c
 	tf2::Vector3 past_tf_translation = point_transform.getOrigin();
 	tf2::Quaternion past_tf_rotation = point_transform.getRotation();
 
-	size_t future_tf_number = 1;
+	int future_tf_number = 1;
 	ros::Time future_tf_time = past_tf_time + laser_slice_time_increment;
 	tf2::Vector3 future_tf_translation = past_tf_translation;
 	tf2::Quaternion future_tf_rotation = past_tf_rotation;
