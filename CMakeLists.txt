@@ -116,6 +116,7 @@ add_dependencies(polar_to_cartesian_matrix_cache
 
 add_dependencies(laserscan_to_pointcloud_assembler
     ${catkin_EXPORTED_TARGETS}
+    ${PROJECT_NAME}_gencfg
 )
 
 
