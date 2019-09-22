@@ -8,9 +8,9 @@
 	<author email="carloscosta.cmcc@gmail.com">Carlos Miguel Correia da Costa</author>
 
 	<buildtool_depend>catkin</buildtool_depend>
-	<depend>libboost-all-dev</depend>
-	<depend>libeigen3-dev</depend>
+	<depend>boost</depend>
 	<depend>dynamic_reconfigure</depend>
+	<depend>eigen</depend>
 	<depend>geometry_msgs</depend>
 	<depend>nav_msgs</depend>
 	<depend>rosconsole</depend>
