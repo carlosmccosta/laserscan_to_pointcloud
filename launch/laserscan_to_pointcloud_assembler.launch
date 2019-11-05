@@ -1,42 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-	<arg name="laser_scan_topics" default="tilt_scan" />
-	<arg name="number_of_scans_to_assemble_per_cloud" default="10" />
-	<arg name="timeout_for_cloud_assembly" default="1.0" />
+	<!-- Several input sensor_msgs/LaserScan topics can be specified using the + separator, example: [front_scan+back_scan] -->
+	<arg name="laser_scan_topics" default="laser_scan" />
+	
+	<!-- The assembled point cloud will be published as a sensor_msgs/PointCloud2 topic -->
+	<!-- A new point cloud will be published when these conditions are reached:
+	    ([number_of_scans_to_assemble_per_cloud] or [timeout_for_cloud_assembly]) and [assembled_point_cloud_not_empty] -->
+	<!-- If -[enforce_reception_of_laser_scans_in_all_topics] is true, the point cloud will only be assembled after the laser scan map data structure receives msgs from all the laser sensors -->
+	<!-- Check the parameters documentation below -->
 	<arg name="pointcloud_publish_topic" default="ambient_pointcloud" />
-	<arg name="nodes_respawn" default="true" />
+	
+	<!-- If true, a map data structure will be created and updated with new incoming laser scans. If the lasers operate at different rate, the map will store the latest msg of each laser topic -->
+	<!-- The assembled point cloud will only be published after the map reaches the size of the laser scan topics vector -->
+	<!-- The frame_id of the laser scan msg is used as key in the map data structure -->
+	<arg name="enforce_reception_of_laser_scans_in_all_topics" default="true" />
+	
+	<!-- If true, the intensity field in the laser scan msg is included in the published point cloud -->
+	<arg name="include_laser_intensity" default="true" />
 
-	<!-- the assembly configurations can be dynamically changed based on twist messages (or twist from odometry messages) -->
-	<!-- the assembly time and number of scans to join are set to the lowest values computed from the linear angular velocities -->
+	<!-- After this amount of laser scans has been integrated, the assembled point cloud will be published -->
+	<!-- The number of scans to assemble should be at least equal to the number of topics -->
+	<arg name="number_of_scans_to_assemble_per_cloud" default="1" /> 
+	
+	<!-- Timeout in seconds for finishing the point cloud assembly (in seconds) -->
+	<arg name="timeout_for_cloud_assembly" default="1.0" />
+
+
+	<!-- The assembly configurations can be dynamically changed based on twist messages (or twist from odometry messages) or can also be used linear velocity and acceleration from imu messages -->
+	<!-- The assembly time and number of scans to merge are set to the lowest values computed from the linear angular velocities -->
 	<arg name="dynamic_update_of_assembly_configuration_from_twist_topic" default="" />
 	<arg name="dynamic_update_of_assembly_configuration_from_odometry_topic" default="odom" />
-	<arg name="dynamic_update_of_assembly_configuration_from_imu_topic" default="" /> <!-- assumes that the robot starts stopped, because it incrementally updates the linear velocity based on the imu linear acceleration -->
-	<arg name="min_number_of_scans_to_assemble_per_cloud" default="2" />
+	<arg name="dynamic_update_of_assembly_configuration_from_imu_topic" default="" /> <!-- Assumes that the robot starts stopped, because it incrementally updates the linear velocity based on the imu linear acceleration -->
+	<arg name="min_number_of_scans_to_assemble_per_cloud" default="1" />
 	<arg name="max_number_of_scans_to_assemble_per_cloud" default="10" />
 	<arg name="min_timeout_seconds_for_cloud_assembly" default="0.3" />
 	<arg name="max_timeout_seconds_for_cloud_assembly" default="1.3" />
-	<arg name="max_linear_velocity" default="0.035" /> <!-- when the linear velocity of the robot is equal or greater than this value, the number of scans to join and assembly timeout will be set to their minimum values specified above -->
-	<arg name="max_angular_velocity" default="0.1" /> <!-- when the angular velocity of the robot is equal or greater than this value, the number of scans to join and assembly timeout will be set to their minimum values specified above -->
+	<arg name="max_linear_velocity" default="0.035" /> <!-- When the linear velocity of the robot is equal or greater than this value, the number of scans to merge and the assembly timeout will be set to their minimum values specified above -->
+	<arg name="max_angular_velocity" default="0.1" /> <!-- When the angular velocity of the robot is equal or greater than this value, the number of scans to merge and the assembly timeout will be set to their minimum values specified above -->
 	
-	<arg name="target_frame" default="odom" /> <!-- TF chain must have motion estimation in order to perform spherical linear interpolation. If it doesn't, specify the motion estimation TF chain with the parameters motion_estimation_source_frame_id and motion_estimation_target_frame_id -->
-	<arg name="motion_estimation_source_frame_id" default="" /> <!-- for example: base_footprint -->
-	<arg name="motion_estimation_target_frame_id" default="" /> <!-- for example: odom -->
-	<arg name="laser_frame" default="" /> <!-- Allows to override the frame_id in laser messages (empty -> used frame_id in header of sensor_msgs::LaserScan) -->
+
+	<!-- This package can perform spherical linear interpolation for correcting the laser distortion that happen when the laser is taking measurements while its moving and rotating on the environment.
+	For achieving this, this packages needs to receive from TF the environment motion estimation associated with the laser.
+	This can be done by either using a [target_frame] that includes the laser motion estimation (for example, odom) or as a separate chain in the TF tree using [motion_estimation_source_frame_id -> motion_estimation_target_frame_id].
+	This way, you can receive the assembled point cloud in a TF frame that is more convenient for you (typically [odom] / [base_footprint] / [base_link]). -->
+	<!-- The TF between the [laser msg frame_id] and the [target_frame] should have a smooth evolution over time.
+	It should not have discrete jumps (typically associated with the corrections given between map -> odom).
+	If your really need to assemble the point cloud in a frame with discrete jumps and also need distortion correction using spherical linear interpolation, then you should specify the auxiliary TF chain for motion estimation.
+	This auxiliary TF chain must have smooth evolution over time (if it is not smooth or the motion estimation is not reliable, then its better to disable the distortion correction algorithms).
+	The recommended frame is odom, published by a well calibrated odometry node receiving data from good wheel encoders. -->
+	<arg name="target_frame" default="odom" />
 	
-	<!-- Number of tfs used to performed laser spherical interpolation (if < 2 no interpolation is done and the tf in the middle of the scan time is used) -->
-	<!-- Spherical interpolation requires reliable odometry / imu or any other source of movement estimation to be within the [source -> target] tf chain (otherwise it will not improve laser projection) -->
-	<!-- The number of tf queries shouldn't be larger than the number of TF messages of movement estimation that will be published between the first and last laser measurement (for efficiency reasons) -->
+	<arg name="motion_estimation_source_frame_id" default="" /> <!-- For example: base_footprint -->
+	<arg name="motion_estimation_target_frame_id" default="" /> <!-- For example: odom -->
+
+	<!-- If necessary, you can override the frame_id that comes in the laser scan messages with a custom frame_id (empty -> uses the frame_id in the header of sensor_msgs::LaserScan) -->
+	<arg name="laser_frame" default="" />
+
+	<!-- For performing laser spherical linear interpolation, the TF needs to be inspected at several times within the time span in which the laser was taking measurements.
+	The number of TF queries performed shouldn't be larger than the number of TF messages of laser movement estimation that will be published between the first and last laser measurement (for efficiency reasons).
+	If the number of TF queries is set as less than 2, then the distortion correction will not be performed and the TF in the middle of the scan time span will be used. -->
 	<arg name="number_of_tf_queries_for_spherical_interpolation" default="4" />
-	
-	<arg name="enforce_reception_of_laser_scans_in_all_topics" default="true" />
-	
+
+	<!-- The TF timeout when performing [lookupTransform] -->
+	<arg name="tf_lookup_timeout" default="0.15" />
+
+
+	<!-- This package can remove points based on their distance to the sensor.
+	This is achieved with the thresholds below, in which a new laser measurement is only considered valid if:
+		laser_scan_msg->ranges[point_index] > (min_range_cutoff_percentage_offset * laser_scan_msg->range_min)
+		and
+		laser_scan_msg->ranges[point_index] < (max_range_cutoff_percentage_offset * laser_scan_msg->range_max) -->
 	<arg name="min_range_cutoff_percentage_offset" default="2.00" />
 	<arg name="max_range_cutoff_percentage_offset" default="0.95" />
-	<arg name="tf_lookup_timeout" default="0.15" />
+	
+	<!-- If true, the points after transformed with TF are checked if they have finite coordinates.
+	This allows to discard points that were affected by temporary invalid TF transforms -->
 	<arg name="remove_invalid_measurements" default="true" />
+
+
+	<!-- If the [target_frame] includes a TF link that may become unavailable (such as map -> odom), this package can use an intermediate recovery frame along with the last TF from [recovery_frame] to [target_frame]. -->
 	<arg name="recovery_frame" default="odom" />
-	<arg name="initial_recovery_transform_in_base_link_to_target" default="false" /> <!-- if false -> transform assumed to be recovery_link -> target -->
 	<arg name="base_link_frame_id" default="base_footprint" />
+	
+	<!-- The initial recovery transform values can be specified below -->
+	<arg name="initial_recovery_transform_in_base_link_to_target" default="false" /> <!-- If false, the transform is assumed to be recovery_link -> target -->
 	<arg name="recovery_to_target_frame_transform_initial_x" default="0.0" />
 	<arg name="recovery_to_target_frame_transform_initial_y" default="0.0" />
 	<arg name="recovery_to_target_frame_transform_initial_z" default="0.0" />
@@ -44,10 +91,15 @@
 	<arg name="recovery_to_target_frame_transform_initial_pitch" default="0.0" />
 	<arg name="recovery_to_target_frame_transform_initial_yaw" default="0.0" />
 
+	<!-- If true, the laser assembler node will restart after a crash -->
+	<arg name="nodes_respawn" default="true" />
+
 	<!-- LaserScan assembler -->
 	<node pkg="laserscan_to_pointcloud" type="laserscan_to_pointcloud_assembler" name="$(anon laserscan_to_pointcloud_assembler)" respawn="$(arg nodes_respawn)" clear_params="true" output="screen">
 		<param name="laser_scan_topics" type="str" value="$(arg laser_scan_topics)" />
 		<param name="pointcloud_publish_topic" type="str" value="$(arg pointcloud_publish_topic)" />
+		<param name="enforce_reception_of_laser_scans_in_all_topics" type="bool" value="$(arg enforce_reception_of_laser_scans_in_all_topics)" />
+		<param name="include_laser_intensity" type="bool" value="$(arg include_laser_intensity)" />
 		<param name="number_of_scans_to_assemble_per_cloud" type="int" value="$(arg number_of_scans_to_assemble_per_cloud)" />
 		<param name="timeout_for_cloud_assembly" type="double" value="$(arg timeout_for_cloud_assembly)" />
 		<param name="dynamic_update_of_assembly_configuration_from_twist_topic" type="str" value="$(arg dynamic_update_of_assembly_configuration_from_twist_topic)" />
@@ -60,15 +112,13 @@
 		<param name="max_linear_velocity" type="double" value="$(arg max_linear_velocity)" />
 		<param name="max_angular_velocity" type="double" value="$(arg max_angular_velocity)" />
 		<param name="target_frame" type="str" value="$(arg target_frame)" />
-		<param name="laser_frame" type="str" value="$(arg laser_frame)" />
 		<param name="motion_estimation_source_frame_id" type="str" value="$(arg motion_estimation_source_frame_id)" />
 		<param name="motion_estimation_target_frame_id" type="str" value="$(arg motion_estimation_target_frame_id)" />
-		<param name="min_range_cutoff_percentage_offset" type="double" value="$(arg min_range_cutoff_percentage_offset)" />
-		<param name="max_range_cutoff_percentage_offset" type="double" value="$(arg max_range_cutoff_percentage_offset)" />
-		<param name="include_laser_intensity" type="bool" value="false" />
-		<param name="enforce_reception_of_laser_scans_in_all_topics" type="bool" value="$(arg enforce_reception_of_laser_scans_in_all_topics)" />
+		<param name="laser_frame" type="str" value="$(arg laser_frame)" />
 		<param name="number_of_tf_queries_for_spherical_interpolation" type="int" value="$(arg number_of_tf_queries_for_spherical_interpolation)" />
 		<param name="tf_lookup_timeout" type="double" value="$(arg tf_lookup_timeout)" />
+		<param name="min_range_cutoff_percentage_offset" type="double" value="$(arg min_range_cutoff_percentage_offset)" />
+		<param name="max_range_cutoff_percentage_offset" type="double" value="$(arg max_range_cutoff_percentage_offset)" />
 		<param name="remove_invalid_measurements" type="bool" value="$(arg remove_invalid_measurements)" />
 		<param name="recovery_frame" type="str" value="$(arg recovery_frame)" />
 		<param name="initial_recovery_transform_in_base_link_to_target" type="bool" value="$(arg initial_recovery_transform_in_base_link_to_target)" />

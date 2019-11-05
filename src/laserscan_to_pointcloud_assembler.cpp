@@ -20,9 +20,15 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 		node_handle_(node_handle), private_node_handle_(private_node_handle) {
 
 	double timeout_for_cloud_assembly = 5.0;
-	private_node_handle_->param("laser_scan_topics", laser_scan_topics_, std::string("tilt_scan"));
+	private_node_handle_->param("laser_scan_topics", laser_scan_topics_, std::string("laser_scan"));
 	private_node_handle_->param("pointcloud_publish_topic", pointcloud_publish_topic_, std::string("ambient_pointcloud"));
-	private_node_handle_->param("number_of_scans_to_assemble_per_cloud", number_of_scans_to_assemble_per_cloud_, 10);
+
+	private_node_handle_->param("enforce_reception_of_laser_scans_in_all_topics", enforce_reception_of_laser_scans_in_all_topics_, true);
+
+	private_node_handle_->param("include_laser_intensity", include_laser_intensity_, true);
+	laserscan_to_pointcloud_.setIncludeLaserIntensity(include_laser_intensity_);
+
+	private_node_handle_->param("number_of_scans_to_assemble_per_cloud", number_of_scans_to_assemble_per_cloud_, 1);
 	private_node_handle_->param("timeout_for_cloud_assembly", timeout_for_cloud_assembly, 1.0);
 	timeout_for_cloud_assembly_.fromSec(timeout_for_cloud_assembly);
 
@@ -46,7 +52,7 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 		imu_subscriber_ = node_handle_->subscribe(dynamic_update_of_assembly_configuration_from_imu_topic, 5, &laserscan_to_pointcloud::LaserScanToPointcloudAssembler::adjustAssemblyConfigurationFromIMU, this);
 	}
 
-	private_node_handle_->param("min_number_of_scans_to_assemble_per_cloud", min_number_of_scans_to_assemble_per_cloud_, 2);
+	private_node_handle_->param("min_number_of_scans_to_assemble_per_cloud", min_number_of_scans_to_assemble_per_cloud_, 1);
 	private_node_handle_->param("max_number_of_scans_to_assemble_per_cloud", max_number_of_scans_to_assemble_per_cloud_, 10);
 	private_node_handle_->param("min_timeout_seconds_for_cloud_assembly", min_timeout_seconds_for_cloud_assembly_, 0.3);
 	private_node_handle_->param("max_timeout_seconds_for_cloud_assembly", max_timeout_seconds_for_cloud_assembly_, 1.3);
@@ -56,23 +62,16 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 	std::string target_frame_id, laser_frame_id, motion_estimation_source_frame_id, motion_estimation_target_frame_id;
 	double number;
 	bool boolean;
-	private_node_handle_->param("target_frame", target_frame_id, std::string("map"));
+	private_node_handle_->param("target_frame", target_frame_id, std::string("odom"));
 	laserscan_to_pointcloud_.setTargetFrame(target_frame_id);
-	private_node_handle_->param("laser_frame", laser_frame_id, std::string(""));
-	laserscan_to_pointcloud_.setLaserFrame(laser_frame_id);
+
 	private_node_handle_->param("motion_estimation_source_frame_id", motion_estimation_source_frame_id, std::string(""));
 	laserscan_to_pointcloud_.setMotionEstimationSourceFrame(motion_estimation_source_frame_id);
 	private_node_handle_->param("motion_estimation_target_frame_id", motion_estimation_target_frame_id, std::string(""));
 	laserscan_to_pointcloud_.setMotionEstimationTargetFrame(motion_estimation_target_frame_id);
-	private_node_handle_->param("include_laser_intensity", include_laser_intensity_, false);
-	private_node_handle_->param("enforce_reception_of_laser_scans_in_all_topics", enforce_reception_of_laser_scans_in_all_topics_, true);
-	laserscan_to_pointcloud_.setIncludeLaserIntensity(include_laser_intensity_);
-	private_node_handle_->param("min_range_cutoff_percentage_offset", number, 1.05);
-	laserscan_to_pointcloud_.setMinRangeCutoffPercentageOffset(number);
-	private_node_handle_->param("max_range_cutoff_percentage_offset", number, 0.95);
-	laserscan_to_pointcloud_.setMaxRangeCutoffPercentageOffset(number);
-	private_node_handle_->param("remove_invalid_measurements", boolean, true);
-	laserscan_to_pointcloud_.setRemoveInvalidMeasurements(boolean);
+
+	private_node_handle_->param("laser_frame", laser_frame_id, std::string(""));
+	laserscan_to_pointcloud_.setLaserFrame(laser_frame_id);
 
 	int integer;
 	private_node_handle_->param("number_of_tf_queries_for_spherical_interpolation", integer, 4);
@@ -81,6 +80,14 @@ LaserScanToPointcloudAssembler::LaserScanToPointcloudAssembler(ros::NodeHandlePt
 	laserscan_to_pointcloud_.setNumberOfTfQueriesForSphericalInterpolation(integer);
 	private_node_handle_->param("tf_lookup_timeout", number, 0.15);
 	laserscan_to_pointcloud_.setTFLookupTimeout(number);
+
+	private_node_handle_->param("min_range_cutoff_percentage_offset", number, 1.05);
+	laserscan_to_pointcloud_.setMinRangeCutoffPercentageOffset(number);
+	private_node_handle_->param("max_range_cutoff_percentage_offset", number, 0.95);
+	laserscan_to_pointcloud_.setMaxRangeCutoffPercentageOffset(number);
+
+	private_node_handle_->param("remove_invalid_measurements", boolean, true);
+	laserscan_to_pointcloud_.setRemoveInvalidMeasurements(boolean);
 
 	dynamic_reconfigure::Server<laserscan_to_pointcloud::LaserScanToPointcloudAssemblerConfig>::CallbackType callback_dynamic_reconfigure =
 			boost::bind(&laserscan_to_pointcloud::LaserScanToPointcloudAssembler::dynamicReconfigureCallback, this, _1, _2);
@@ -101,6 +108,18 @@ void LaserScanToPointcloudAssembler::setupLaserScansSubscribers(std::string lase
 		ros::Subscriber laserscan_subscriber = node_handle_->subscribe(topic_name, 5, &laserscan_to_pointcloud::LaserScanToPointcloudAssembler::processLaserScan, this);
 		laserscan_subscribers_.push_back(laserscan_subscriber);
 		ROS_INFO_STREAM("Adding " << topic_name << " to the list of LaserScan topics to assemble");
+	}
+
+	if (number_of_scans_to_assemble_per_cloud_ < (int)laserscan_subscribers_.size()) {
+		number_of_scans_to_assemble_per_cloud_ = (int)laserscan_subscribers_.size();
+	}
+
+	if (min_number_of_scans_to_assemble_per_cloud_ < (int)laserscan_subscribers_.size()) {
+		min_number_of_scans_to_assemble_per_cloud_ = (int)laserscan_subscribers_.size();
+	}
+
+	if (max_number_of_scans_to_assemble_per_cloud_ <= (int)min_number_of_scans_to_assemble_per_cloud_) {
+		max_number_of_scans_to_assemble_per_cloud_ = (int)(min_number_of_scans_to_assemble_per_cloud_ * 2);
 	}
 }
 
